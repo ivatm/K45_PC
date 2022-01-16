@@ -10,8 +10,13 @@ from tkinter import ttk
 from tkinter import *
 from tkinter.ttk import *
 from K45Unit import K45_Unit
+import threading # Good example https://docs-python.ru/standart-library/modul-threading-python/klass-timer-modulja-threading/
 
 class K45_Comm(tk.Tk):
+    
+    def CommunicationHandle(self):
+        print("Againe \n\r")
+    
     
     def __init__(self, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
@@ -34,6 +39,10 @@ class K45_Comm(tk.Tk):
         
         # SetOrScanState, CelseOrKelvin , CryoLiquidesLevelMeasureOn 
         Regulator = K45_Unit(SetOrScanState.get(), CelseOrKelvin.get(), CryoLiquidesLevelMeasureOn.get())
+        
+        # Timer for communication
+        t = threading.Timer(1, self.CommunicationHandle)
+
 
         # --------------------------------------------------------------------------
         K45MenuButton = Menu(self)
@@ -64,17 +73,17 @@ class K45_Comm(tk.Tk):
         
         TimeStepLabel = Label(ScanFrame, text = "dt - Time Step")
         TimeStepLabel.pack()
-        TimeStepLabel.place(x=0,y=20)
+        TimeStepLabel.place(x=20,y=20)
         TimeStepEntry = Entry(ScanFrame)
         TimeStepEntry.pack()
-        TimeStepEntry.place(x=0,y=40)
+        TimeStepEntry.place(x=20,y=40)
         
         TemperatureStepLabel = Label(ScanFrame, text = "dT - Temperature Step")
         TemperatureStepLabel.pack()
-        TemperatureStepLabel.place(x=150,y=20)
+        TemperatureStepLabel.place(x=170,y=20)
         TemperatureStepEntry = Entry(ScanFrame)
         TemperatureStepEntry.pack()
-        TemperatureStepEntry.place(x=150,y=40) 
+        TemperatureStepEntry.place(x=170,y=40) 
         
         # Current state of Temperature --------------------------------------------------------------------------
         TemperatureFrame = LabelFrame(self, relief=RAISED, borderwidth = 1, text = "Temperature")
@@ -83,17 +92,17 @@ class K45_Comm(tk.Tk):
         
         TempRealLabel = Label(TemperatureFrame, text = "Current Temperature")
         TempRealLabel.pack()
-        TempRealLabel.place(x=0,y=20)
+        TempRealLabel.place(x=20,y=20)
         TempRealEntry = Entry(TemperatureFrame)
         TempRealEntry.pack()
-        TempRealEntry.place(x=0,y=40)
+        TempRealEntry.place(x=20,y=40)
         
         TempSetLabel = Label(TemperatureFrame, text = "Set Temperature")
         TempSetLabel.pack()
-        TempSetLabel.place(x=150,y=20)
+        TempSetLabel.place(x=170,y=20)
         TempSetEntry = Entry(TemperatureFrame)
         TempSetEntry.pack()
-        TempSetEntry.place(x=150,y=40)
+        TempSetEntry.place(x=170,y=40)
         
         # Cryo liquides level --------------------------------------------------------------------------
         CryoLevelFrame = LabelFrame(self, relief=RAISED, borderwidth = 1,  text = "Level of Cryo Liquid")
@@ -129,13 +138,21 @@ class K45_Comm(tk.Tk):
         self.toplevel_dialog.protocol("WM_DELETE_WINDOW", self.Close_InitCommunication)
 
         COMPort = StringVar()
-        InputCOMPort = Entry(self.toplevel_dialog, variable = COMPort, text = "COM Port")
+        InputCOMPortLabel = Label(self.toplevel_dialog, text = "COM Port")
+        InputCOMPortLabel.pack()
+        InputCOMPortLabel.place(x=20,y=10)
+        InputCOMPort = Entry(self.toplevel_dialog)
         InputCOMPort.pack(anchor = NW)
-        InputCOMPort.place(x=0,y=40)
+        InputCOMPort.place(x=20,y=40)
         
         BoudRate = IntVar()
-        InputBoudRate = Entry(self.toplevel_dialog, variable = BoudRate, text = "Boudrate")
+        InputBoudRateLabel = Label(self.toplevel_dialog, text = "Boudrate")
+        InputBoudRateLabel.pack()
+        InputBoudRateLabel.place(x=250,y=10)
+        InputBoudRate = Entry(self.toplevel_dialog)
         InputBoudRate.pack()
+        InputBoudRate.pack(anchor = SE)
+        InputBoudRate.place(x=250,y=40)
 
     def Close_InitCommunication(self):
 

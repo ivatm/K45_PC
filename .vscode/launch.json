@@ -1,0 +1,22 @@
+// Use IntelliSense to learn about possible attributes.
+// Hover to view descriptions of existing attributes.
+// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch TxRx_K45.py",
+      "type": "python",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/src",
+      "program": "${workspaceFolder}/src/TxRx_K45.py"
+    },
+    {
+      "name": "K45",
+      "type": "python",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/src",
+      "program": "${workspaceFolder}/src/K45Visual.py"
+    }
+  ]
+}
