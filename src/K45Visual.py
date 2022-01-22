@@ -10,60 +10,104 @@ from tkinter import ttk
 from tkinter import *
 from tkinter.ttk import *
 from K45Unit import K45_Unit
-import threading # Good example https://docs-python.ru/standart-library/modul-threading-python/klass-timer-modulja-threading/
+import serial
+from serial.tools.list_ports_windows import iterate_comports
+from _ast import List
+import logging
+
+'''
+  Good examples for Timers
+  https://question-it.com/questions/1025145/kak-sozdat-fonovyj-potok-pri-vyzove-intervalnoj-funktsii-v-python
+  https://ru.stackoverflow.com/questions/848711/tkinter-%D0%B8-%D0%B7%D0%B0%D0%B2%D0%B5%D1%80%D1%88%D0%B5%D0%BD%D0%B8%D0%B5-%D0%BF%D1%80%D0%B8%D0%BB%D0%BE%D0%B6%D0%B5%D0%BD%D0%B8%D1%8F-%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D0%BE%D0%B9
+ ''' 
+from threading import Thread
+import time
 
 class K45_Comm(tk.Tk):
     
     def CommunicationHandle(self):
-        print("Againe \n\r")
+        if (hasattr(self.COMConnection, 'is_open')   and (self.COMConnection.isOpen())):
+            print("Againe \n\r")
+        #self.CommTimer.start();
     
+    def OnQuit(self):
+        self. t._target.cancelled = True
+        # IMPORTANT!
+        self.wm_attributes("-disabled", False) # IMPORTANT!
+        self.destroy()
     
     def __init__(self, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
         self.title("K45")
+        self.protocol("WM_DELETE_WINDOW", self.OnQuit)
         self.minsize(1000, 700)
 
-        # --------------------------------------------------------------------------
-        SetOrScanState = BooleanVar()
-        CelseOrKelvin = BooleanVar()
-        CryoLiquidesLevelMeasureOn = BooleanVar()
-        Treal = DoubleVar()
-        Tset = DoubleVar()
-        Tcur_set = DoubleVar()
-        D_T = DoubleVar()
-        D_t = DoubleVar()
-        Ureal = DoubleVar()
-        Kprop = IntVar()
-        Kdiff = IntVar()
-        L_Level = IntVar()
+        # K45 Visual variables --------------------------------------------------------------------------
+        self.SetOrScanState = BooleanVar(name = 'SetOrScanState')
+        self.SetOrScanState.set(True)
+        self.CelseOrKelvin = BooleanVar(name = 'CelseOrKelvin')
+        self.CelseOrKelvin.value = True
+        self.CryoLiquidesLevelMeasureOn = BooleanVar(name = 'CryoLiquidesLevelMeasureOn')
+        self.CryoLiquidesLevelMeasureOn.value = True
+        self.Treal = DoubleVar(name = 'Treal')
+        self.Treal.value = 20
+        self.Tset = DoubleVar(name = 'Tset')
+        self.Tset.value = 0
+        self.Tcur_set = DoubleVar(name = 'Tcur_set')
+        self.Tcur_set.value = 20
+        self.D_T = DoubleVar(name = 'D_T')
+        self.D_T.value = 1
+        self.D_t = DoubleVar(name = 'D_t')
+        self.D_t.value = 1
+        self.Ureal = DoubleVar(name = 'Ureal')
+        self.Ureal.value = 0.6
+        self.Kprop = IntVar(name = 'Kprop')
+        self.Kprop.value = 10 
+        self.Kdiff = IntVar(name = 'Kdiff')
+        self.Kdiff.value = 10
+        self.L_Level = IntVar(name = 'L_Level')
+        self.L_Level.value = 50
         
         # SetOrScanState, CelseOrKelvin , CryoLiquidesLevelMeasureOn 
-        Regulator = K45_Unit(SetOrScanState.get(), CelseOrKelvin.get(), CryoLiquidesLevelMeasureOn.get())
+        Regulator = K45_Unit(self.SetOrScanState.get(), self.CelseOrKelvin.get(), self.CryoLiquidesLevelMeasureOn.get())
         
         # Timer for communication
-        t = threading.Timer(1, self.CommunicationHandle)
-
-
+        self.COMConnection = None
+        def background_task(Period, Handle):
+            while not background_task.cancelled:
+                Handle()
+                time.sleep(Period)
+        background_task.cancelled = False
+        self.t = Thread(target=background_task, args = (1, self.CommunicationHandle))
+        self.t.start()
+        
         # --------------------------------------------------------------------------
         K45MenuButton = Menu(self)
         K45MenuButton.add_command(label="Connection", command = self.Create_InitCommunication)
         K45MenuButton.add_command(label="Sensor")
-        K45MenuButton.add_command(label="Quit!", command=self.quit)
+        K45MenuButton.add_command(label="Quit!", command=self.OnQuit)
         self.config(menu=K45MenuButton)
+        
+        # Reception value procedure
+        def SetValueToVariable( Variable, Value):
+            #Variable.set(Value)
+            print("SetOrScanState %d,\n"  % self.SetOrScanState.get())
 
         # Mode Selection and system state --------------------------------------------------------------------------
         ModeFrame = LabelFrame(self, relief=RAISED, borderwidth = 1, text = "Mode selection")
         ModeFrame.pack()
         ModeFrame.place(height=100, width=510, x=10, y=20)
         
-        SetScanSelection_Rb1 = Radiobutton(ModeFrame, text = "Set", variable = SetOrScanState, value = FALSE)
-        SetScanSelection_Rb2 = Radiobutton(ModeFrame, text = "Scan", variable = SetOrScanState, value = TRUE)
+        SetScanSelection_Rb1 = Radiobutton(ModeFrame, text = "Set", 
+                                           variable = self.SetOrScanState, value = "True",
+                                           command = lambda : SetValueToVariable( self.SetOrScanState, self.SetOrScanState.get()))
+        SetScanSelection_Rb2 = Radiobutton(ModeFrame, text = "Scan", 
+                                           variable = self.SetOrScanState, value = "False", 
+                                           command = lambda : SetValueToVariable( self.SetOrScanState, self.SetOrScanState.get()))
         SetScanSelection_Rb1.pack()
         SetScanSelection_Rb2.pack()
-        SetScanSelection_Rb1.place(x=0,y=20)
-        self.update()
-        WorkVar = SetScanSelection_Rb1.winfo_width()
-        SetScanSelection_Rb2.place(x=SetScanSelection_Rb1.winfo_width(),y=20)
+        SetScanSelection_Rb1.place(x=20,y=20)
+        SetScanSelection_Rb2.place(x=60,y=20)
         
         
         # On Scan mode variables --------------------------------------------------------------------------
@@ -117,7 +161,7 @@ class K45_Comm(tk.Tk):
         CryoLiquidesLevel['value'] = L_Level
 
     def Create_InitCommunication(self):
-
+        
         # THE CLUE
         self.wm_attributes("-disabled", True)
 
@@ -137,30 +181,60 @@ class K45_Comm(tk.Tk):
         # THE PARENT WINDOW AGAIN)
         self.toplevel_dialog.protocol("WM_DELETE_WINDOW", self.Close_InitCommunication)
 
+
+        COMPortList = list(iterate_comports())
+        COMPortOptions = []
+        for port  in sorted(COMPortList):
+            COMPortOptions.append(port.device)
+        
         COMPort = StringVar()
-        InputCOMPortLabel = Label(self.toplevel_dialog, text = "COM Port")
+        COMPort.set( "COM1")
+        InputCOMPortLabel = Label(self.toplevel_dialog, text = "COM Port Selection")
         InputCOMPortLabel.pack()
         InputCOMPortLabel.place(x=20,y=10)
-        InputCOMPort = Entry(self.toplevel_dialog)
+        InputCOMPort = OptionMenu(self.toplevel_dialog, COMPort, *COMPortOptions)
         InputCOMPort.pack(anchor = NW)
         InputCOMPort.place(x=20,y=40)
         
+        BoudRateOptions = [2400, 4800, 9600, 14400, 19200]
         BoudRate = IntVar()
-        InputBoudRateLabel = Label(self.toplevel_dialog, text = "Boudrate")
+        BoudRate.set( 9600)
+        InputBoudRateLabel = Label(self.toplevel_dialog, text = "Boudrate Selection")
         InputBoudRateLabel.pack()
         InputBoudRateLabel.place(x=250,y=10)
-        InputBoudRate = Entry(self.toplevel_dialog)
-        InputBoudRate.pack()
+        InputBoudRate = OptionMenu(self.toplevel_dialog, BoudRate, *BoudRateOptions)
         InputBoudRate.pack(anchor = SE)
         InputBoudRate.place(x=250,y=40)
+        
+        BtnOk = Button(self.toplevel_dialog, text="Ok", command=lambda : self.GetCommConfig(COMPort.get(), BoudRate.get()))
+        BtnOk.pack(side="top")
+        BtnOk.place(x=115, y=80)
+        
+    def GetCommConfig(self, COMPort, BoudRate ):
+        if (self.COMConnection != None and self.COMConnection.isOpen() and (self.COMConnection.port == COMPort)):
+            self.Close_InitCommunication() # Nothing to do
+        else:
+            try:
+                LocalComConnection = serial.Serial(
+                        port=COMPort,
+                        baudrate=BoudRate,
+                        parity=serial.PARITY_NONE,
+                        stopbits=serial.STOPBITS_ONE,
+                        bytesize=serial.EIGHTBITS)
+                
+                if (LocalComConnection.isOpen()):
+                    self.COMConnection = LocalComConnection
+                    self.Close_InitCommunication()
+                
+            except Exception as e:
+                #"{}: {} [{}]".format(port, desc, hwid))
+                # self.COMConnection = None
+                print("Can't set COM Port:{}\n".format(str(e)))
 
     def Close_InitCommunication(self):
-
         # IMPORTANT!
         self.wm_attributes("-disabled", False) # IMPORTANT!
-
         self.toplevel_dialog.destroy()
-
         # Possibly not needed, used to focus parent window again
         self.deiconify() 
 
