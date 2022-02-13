@@ -67,13 +67,13 @@ class K45_Comm(tk.Tk):
         self.CryoLiquidesLevelMeasureOn = IntVar(name = 'CryoLiquidesLevelMeasureOn')
         self.CryoLiquidesLevelMeasureOn.value = 1
         self.Treal = DoubleVar(name = 'Treal')
-        self.Treal.value = 20
+        self.Treal.value = 2000
         self.Tset = DoubleVar(name = 'Tset')
         self.Tset.value = 0
         self.Tcur_set = DoubleVar(name = 'Tcur_set')
-        self.Tcur_set.value = 20
+        self.Tcur_set.value = 2000
         self.D_T = DoubleVar(name = 'D_T')
-        self.D_T.value = 1
+        self.D_T.value = 100
         self.D_t = DoubleVar(name = 'D_t')
         self.D_t.value = 1
         self.Ureal = DoubleVar(name = 'Ureal')
@@ -151,7 +151,7 @@ class K45_Comm(tk.Tk):
         
         TimeStepLabel = Label(ScanFrame, text = "dt - Time Step")
         TimeStepLabel.place(x=20,y=20)
-        WorkStr = self.D_T.value.__str__()
+        WorkStr = self.D_t.value.__str__()
         TimeStepEntry = Entry(ScanFrame, name = "d_t")
         TimeStepEntry.insert(END, WorkStr)
         TimeStepEntry.place(x=20,y=40)
@@ -160,7 +160,7 @@ class K45_Comm(tk.Tk):
         
         TemperatureStepLabel = Label(ScanFrame, text = "dT - Temperature Step")
         TemperatureStepLabel.place(x=170,y=20)
-        WorkStr = self.D_T.value.__str__()
+        WorkStr = self.Regulator.GetTemperatureString(self.D_T.value, False)
         TemperatureStepEntry = Entry(ScanFrame, name = "d_T")
         TemperatureStepEntry.insert(END, WorkStr)
         TemperatureStepEntry.place(x=170,y=40) 
@@ -174,22 +174,26 @@ class K45_Comm(tk.Tk):
         TempRealLabel = Label(TemperatureFrame, text = "Current Temperature")
         TempRealLabel.place(x=20,y=20)
        
-        WorkStr = self.Treal.value.__str__()
+        WorkStr = self.Regulator.GetTemperatureString(self.Treal.value, True)
         TempRealLabel = tk.Label(TemperatureFrame, anchor="w", text = WorkStr, bg="white" , height=1, width=15 , name = "treal")
         TempRealLabel.place(x=20,y=40)
         
         TempSetLabel = Label(TemperatureFrame, text = "Set Temperature")
         TempSetLabel.place(x=170,y=20)
-        WorkStr = self.Tset.value.__str__()
+        WorkStr = self.Regulator.GetTemperatureString(self.Tset.value, True)
         TempSetEntry = Entry(TemperatureFrame, name = "tset")
         TempSetEntry.insert(END, WorkStr)
         TempSetEntry.place(x=170,y=40)
         TempSetEntry.bind('<Button-1>', SelectFocus)
         TempSetEntry.bind('<Return>', ReleaseFocus)
         
+        # Status frame --------------------------------------------------------------------------
+        StatusFrame = LabelFrame(self, relief=RAISED, borderwidth = 1,  text = "Status", name="status_frame")
+        StatusFrame.place(height=380, width=150, x=550, y=20)
+        
         # Cryo liquides level --------------------------------------------------------------------------
         CryoLevelFrame = LabelFrame(self, relief=RAISED, borderwidth = 1,  text = "Level of Cryo Liquid", name="cryo_level")
-        CryoLevelFrame.place(height=380, width=150, x=550, y=20)
+        CryoLevelFrame.place(height=380, width=150, x=725, y=20)
         
         # Progress bar widget
         CryoLiquidesLevel = Progressbar(CryoLevelFrame, orient=VERTICAL, length=200,  mode='determinate', name="cryo_level_bar")
@@ -305,15 +309,19 @@ class K45_Comm(tk.Tk):
             self.nametowidget(".pid_configs.kdiff").insert(END, WorkStr)
 
         if (self.Focused == None or self.Focused != self.nametowidget(".temperature.tset")):
-            WorkStr = self.Tset.value.__str__()
+            WorkStr = self.Regulator.GetTemperatureString(self.Tset.value, True)
             self.nametowidget(".temperature.tset").delete(0, END)
             self.nametowidget(".temperature.tset").insert(END, WorkStr)
         
-        WorkStr = self.Treal.value.__str__()
+        if (self.Focused == None or self.Focused != self.nametowidget(".temperature.treal")):
+            WorkStr = self.Regulator.GetTemperatureString(self.Treal.value, True)
+            self.nametowidget(".temperature.treal").delete(0, END)
+            self.nametowidget(".temperature.treal").insert(END, WorkStr)
+        
         self.nametowidget(".temperature.treal").config(text = WorkStr)
 
         if (self.Focused == None or self.Focused != self.nametowidget(".scan_configs.d_T")):
-            WorkStr = self.D_T.value.__str__()
+            WorkStr = self.Regulator.GetTemperatureString(self.D_T.value, False)
             self.nametowidget(".scan_configs.d_T").delete(0, END)
             self.nametowidget(".scan_configs.d_T").insert(END, WorkStr)
 
