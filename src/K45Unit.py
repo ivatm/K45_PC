@@ -202,12 +202,12 @@ class K45_Unit(object):
             #case 
             print(Variable)
             print(StrValue)
-            self.SendCommand(keKprop_input, float(StrValue), COMConnection)
+            self.SendCommand(keKprop_input, int(StrValue), COMConnection)
         elif Variable=="kdiff":
             #case 
             print(Variable)
             print(StrValue)
-            self.SendCommand(keKdiff_input, float(StrValue), COMConnection)
+            self.SendCommand(keKdiff_input, int(StrValue), COMConnection)
         elif Variable=="ureal":
             print(Variable)
             print(StrValue)

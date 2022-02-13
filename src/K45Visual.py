@@ -313,10 +313,10 @@ class K45_Comm(tk.Tk):
             self.nametowidget(".temperature.tset").delete(0, END)
             self.nametowidget(".temperature.tset").insert(END, WorkStr)
         
-        if (self.Focused == None or self.Focused != self.nametowidget(".temperature.treal")):
-            WorkStr = self.Regulator.GetTemperatureString(self.Treal.value, True)
-            self.nametowidget(".temperature.treal").delete(0, END)
-            self.nametowidget(".temperature.treal").insert(END, WorkStr)
+#        if (self.Focused == None or self.Focused != self.nametowidget(".temperature.treal")):
+#            WorkStr = self.Regulator.GetTemperatureString(self.Treal.value, True)
+#            self.nametowidget(".temperature.treal").delete(0, END)
+#            self.nametowidget(".temperature.treal").insert(END, WorkStr)
         
         self.nametowidget(".temperature.treal").config(text = WorkStr)
 
