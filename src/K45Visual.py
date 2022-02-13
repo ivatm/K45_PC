@@ -23,11 +23,19 @@ import logging
 from threading import Thread
 import time
 
+
+
 class K45_Comm(tk.Tk):
     
     def CommunicationHandle(self):
         if (hasattr(self.COMConnection, 'is_open')   and (self.COMConnection.isOpen())):
             print("Againe \n\r")
+            if (self.Regulator.VarsUpdate(self.COMConnection)):
+                self.UpdateVariables()
+                # Visual elements update
+                self.UpdateVisuals()
+        else:
+            print("Waite for COM\n\r")
         #self.CommTimer.start();
     
     def OnQuit(self):
@@ -41,14 +49,23 @@ class K45_Comm(tk.Tk):
         self.title("K45")
         self.protocol("WM_DELETE_WINDOW", self.OnQuit)
         self.minsize(1000, 700)
+        #------------------------------------------------------------------------------------------------------
+        self.Focused = None
+        def SelectFocus(event):
+            self.Focused = event.widget
+            
+        def ReleaseFocus(event):
+            if  (hasattr(self.COMConnection, 'is_open')   and (self.COMConnection.isOpen())):
+                self.Regulator.RemoteSetValue(str(self.Focused).split(".")[-1], self.Focused.get() , self.COMConnection)
+
 
         # K45 Visual variables --------------------------------------------------------------------------
-        self.SetOrScanState = BooleanVar(name = 'SetOrScanState')
-        self.SetOrScanState.set(True)
-        self.CelseOrKelvin = BooleanVar(name = 'CelseOrKelvin')
-        self.CelseOrKelvin.value = True
-        self.CryoLiquidesLevelMeasureOn = BooleanVar(name = 'CryoLiquidesLevelMeasureOn')
-        self.CryoLiquidesLevelMeasureOn.value = True
+        self.SetOrScanState = IntVar(name = 'SetOrScanState')
+        self.SetOrScanState.set(0)
+        self.CelseOrKelvin = IntVar(name = 'CelseOrKelvin')
+        self.CelseOrKelvin.value = 1
+        self.CryoLiquidesLevelMeasureOn = IntVar(name = 'CryoLiquidesLevelMeasureOn')
+        self.CryoLiquidesLevelMeasureOn.value = 1
         self.Treal = DoubleVar(name = 'Treal')
         self.Treal.value = 20
         self.Tset = DoubleVar(name = 'Tset')
@@ -69,7 +86,7 @@ class K45_Comm(tk.Tk):
         self.L_Level.value = 50
         
         # SetOrScanState, CelseOrKelvin , CryoLiquidesLevelMeasureOn 
-        Regulator = K45_Unit(self.SetOrScanState.get(), self.CelseOrKelvin.get(), self.CryoLiquidesLevelMeasureOn.get())
+        self.Regulator = K45_Unit(self.SetOrScanState.get(), self.CelseOrKelvin.get(), self.CryoLiquidesLevelMeasureOn.get())
         
         # Timer for communication
         self.COMConnection = None
@@ -95,70 +112,91 @@ class K45_Comm(tk.Tk):
 
         # Mode Selection and system state --------------------------------------------------------------------------
         ModeFrame = LabelFrame(self, relief=RAISED, borderwidth = 1, text = "Mode selection")
-        ModeFrame.pack()
-        ModeFrame.place(height=100, width=510, x=10, y=20)
+        ModeFrame.place(height=50, width=510, x=10, y=20)
         
         SetScanSelection_Rb1 = Radiobutton(ModeFrame, text = "Set", 
-                                           variable = self.SetOrScanState, value = "True",
-                                           command = lambda : SetValueToVariable( self.SetOrScanState, self.SetOrScanState.get()))
+                                           variable = self.SetOrScanState, value = 1)
         SetScanSelection_Rb2 = Radiobutton(ModeFrame, text = "Scan", 
-                                           variable = self.SetOrScanState, value = "False", 
-                                           command = lambda : SetValueToVariable( self.SetOrScanState, self.SetOrScanState.get()))
-        SetScanSelection_Rb1.pack()
-        SetScanSelection_Rb2.pack()
-        SetScanSelection_Rb1.place(x=20,y=20)
-        SetScanSelection_Rb2.place(x=60,y=20)
+                                           variable = self.SetOrScanState, value = 0)
+        SetScanSelection_Rb1.place(x=20,y=5)
+        SetScanSelection_Rb2.place(x=60,y=5)
         
+        # PID configurations --------------------------------------------------------------------------
+        PIDFrame = LabelFrame(self, relief=RAISED, borderwidth = 1, text = "PID configs", name = "pid_configs")
+        PIDFrame.place(height=100, width=510, x=10, y=80)
+        
+        PropPartLabel = Label(PIDFrame, text = "KP - Proportional part ")
+        PropPartLabel.place(x=20,y=20)
+        WorkStr = self.Kprop.value.__str__()
+        KpropEntry = Entry(PIDFrame, name = "kprop")
+        KpropEntry.insert(END, WorkStr)
+        KpropEntry.place(x=20,y=40)
+        KpropEntry.bind('<Button-1>', SelectFocus)
+        KpropEntry.bind('<Return>', ReleaseFocus)
+
+        
+        DiffPartLabel = Label(PIDFrame, text = "KD - Differential part")
+        DiffPartLabel.place(x=170,y=20)
+        WorkStr = self.Kdiff.value.__str__()
+        KdiffEntry = Entry(PIDFrame, name = "kdiff")
+        KdiffEntry.insert(END, WorkStr)
+        KdiffEntry.place(x=170,y=40) 
+        KdiffEntry.bind('<Button-1>', SelectFocus)
+        KdiffEntry.bind('<Return>', ReleaseFocus)
+
         
         # On Scan mode variables --------------------------------------------------------------------------
-        ScanFrame = LabelFrame(self, relief=RAISED, borderwidth = 1, text = "Scan configs")
-        ScanFrame.pack()
-        ScanFrame.place(height=100, width=510, x=10, y=125)
+        ScanFrame = LabelFrame(self, relief=RAISED, borderwidth = 1, text = "Scan configs", name = "scan_configs")
+        ScanFrame.place(height=100, width=510, x=10, y=190)
         
         TimeStepLabel = Label(ScanFrame, text = "dt - Time Step")
-        TimeStepLabel.pack()
         TimeStepLabel.place(x=20,y=20)
-        TimeStepEntry = Entry(ScanFrame)
-        TimeStepEntry.pack()
+        WorkStr = self.D_T.value.__str__()
+        TimeStepEntry = Entry(ScanFrame, name = "d_t")
+        TimeStepEntry.insert(END, WorkStr)
         TimeStepEntry.place(x=20,y=40)
+        TimeStepEntry.bind('<Button-1>', SelectFocus)
+        TimeStepEntry.bind('<Return>', ReleaseFocus)
         
         TemperatureStepLabel = Label(ScanFrame, text = "dT - Temperature Step")
-        TemperatureStepLabel.pack()
         TemperatureStepLabel.place(x=170,y=20)
-        TemperatureStepEntry = Entry(ScanFrame)
-        TemperatureStepEntry.pack()
+        WorkStr = self.D_T.value.__str__()
+        TemperatureStepEntry = Entry(ScanFrame, name = "d_T")
+        TemperatureStepEntry.insert(END, WorkStr)
         TemperatureStepEntry.place(x=170,y=40) 
+        TemperatureStepEntry.bind('<Button-1>', SelectFocus)
+        TemperatureStepEntry.bind('<Return>', ReleaseFocus)
         
         # Current state of Temperature --------------------------------------------------------------------------
-        TemperatureFrame = LabelFrame(self, relief=RAISED, borderwidth = 1, text = "Temperature")
-        TemperatureFrame.pack()
-        TemperatureFrame.place(height=100, width=510, x=10, y=230)
+        TemperatureFrame = LabelFrame(self, relief=RAISED, borderwidth = 1, text = "Temperature", name="temperature")
+        TemperatureFrame.place(height=100, width=510, x=10, y=300)
         
         TempRealLabel = Label(TemperatureFrame, text = "Current Temperature")
-        TempRealLabel.pack()
         TempRealLabel.place(x=20,y=20)
-        TempRealEntry = Entry(TemperatureFrame)
-        TempRealEntry.pack()
-        TempRealEntry.place(x=20,y=40)
+       
+        WorkStr = self.Treal.value.__str__()
+        TempRealLabel = tk.Label(TemperatureFrame, anchor="w", text = WorkStr, bg="white" , height=1, width=15 , name = "treal")
+        TempRealLabel.place(x=20,y=40)
         
         TempSetLabel = Label(TemperatureFrame, text = "Set Temperature")
-        TempSetLabel.pack()
         TempSetLabel.place(x=170,y=20)
-        TempSetEntry = Entry(TemperatureFrame)
-        TempSetEntry.pack()
+        WorkStr = self.Tset.value.__str__()
+        TempSetEntry = Entry(TemperatureFrame, name = "tset")
+        TempSetEntry.insert(END, WorkStr)
         TempSetEntry.place(x=170,y=40)
+        TempSetEntry.bind('<Button-1>', SelectFocus)
+        TempSetEntry.bind('<Return>', ReleaseFocus)
         
         # Cryo liquides level --------------------------------------------------------------------------
-        CryoLevelFrame = LabelFrame(self, relief=RAISED, borderwidth = 1,  text = "Level of Cryo Liquid")
-        CryoLevelFrame.pack()
-        CryoLevelFrame.place(height=310, width=150, x=550, y=20)
+        CryoLevelFrame = LabelFrame(self, relief=RAISED, borderwidth = 1,  text = "Level of Cryo Liquid", name="cryo_level")
+        CryoLevelFrame.place(height=380, width=150, x=550, y=20)
         
         # Progress bar widget
-        CryoLiquidesLevel = Progressbar(CryoLevelFrame, orient=VERTICAL, length=200,  mode='determinate')
+        CryoLiquidesLevel = Progressbar(CryoLevelFrame, orient=VERTICAL, length=200,  mode='determinate', name="cryo_level_bar")
         CryoLiquidesLevel.place(x=60, y=30)
         
-        L_Level = 55
-        CryoLiquidesLevel['value'] = L_Level
+        self.L_Level = 55
+        CryoLiquidesLevel['value'] = self.L_Level
 
     def Create_InitCommunication(self):
         
@@ -228,7 +266,7 @@ class K45_Comm(tk.Tk):
                 
             except Exception as e:
                 #"{}: {} [{}]".format(port, desc, hwid))
-                # self.COMConnection = None
+                self.COMConnection = None
                 print("Can't set COM Port:{}\n".format(str(e)))
 
     def Close_InitCommunication(self):
@@ -237,6 +275,61 @@ class K45_Comm(tk.Tk):
         self.toplevel_dialog.destroy()
         # Possibly not needed, used to focus parent window again
         self.deiconify() 
+
+    def UpdateVariables(self):
+        self.Treal.value = self.Regulator.Treal
+        self.Tset.value = self.Regulator.Tset
+        self.Tcur_set.value = self.Regulator.Tcur_set
+        self.Ureal.value = self.Regulator.Ureal
+        
+        self.D_T.value = self.Regulator.D_T
+        self.D_t.value = self.Regulator.D_t
+        self.Kprop.value = self.Regulator.Kprop
+        self.Kdiff.value = self.Regulator.Kdiff
+        # -------------------------------------------------------------
+        self.SetOrScanState.value = self.Regulator.SetOrScanState
+        self.CelseOrKelvin.value = self.Regulator.CelseOrKelvin
+        self.CryoLiquidesLevelMeasureOn.value = self.Regulator.CryoLiquidesLevelMeasureOn
+        # -------------------------------------------------------------
+
+    def UpdateVisuals(self):
+        
+        if (self.Focused == None or self.Focused != self.nametowidget(".pid_configs.kprop")):
+            WorkStr = self.Kprop.value.__str__()
+            self.nametowidget(".pid_configs.kprop").delete(0, END)
+            self.nametowidget(".pid_configs.kprop").insert(END, WorkStr)
+
+        if (self.Focused == None or self.Focused != self.nametowidget(".pid_configs.kdiff")):
+            WorkStr = self.Kdiff.value.__str__()
+            self.nametowidget(".pid_configs.kdiff").delete(0, END)
+            self.nametowidget(".pid_configs.kdiff").insert(END, WorkStr)
+
+        if (self.Focused == None or self.Focused != self.nametowidget(".temperature.tset")):
+            WorkStr = self.Tset.value.__str__()
+            self.nametowidget(".temperature.tset").delete(0, END)
+            self.nametowidget(".temperature.tset").insert(END, WorkStr)
+        
+        WorkStr = self.Treal.value.__str__()
+        self.nametowidget(".temperature.treal").config(text = WorkStr)
+
+        if (self.Focused == None or self.Focused != self.nametowidget(".scan_configs.d_T")):
+            WorkStr = self.D_T.value.__str__()
+            self.nametowidget(".scan_configs.d_T").delete(0, END)
+            self.nametowidget(".scan_configs.d_T").insert(END, WorkStr)
+
+        if (self.Focused == None or self.Focused != self.nametowidget(".scan_configs.d_t")):
+            WorkStr = self.D_t.value.__str__()
+            self.nametowidget(".scan_configs.d_t").delete(0, END)
+            self.nametowidget(".scan_configs.d_t").insert(END, WorkStr)
+        
+        #self.nametowidget(".cryo_level.cryo_level_bar")['value'] = self.L_Level
+        if (not self.CryoLiquidesLevelMeasureOn.get()):
+            self.nametowidget(".cryo_level.cryo_level_bar")['value'] = 0
+            #self.nametowidget(".cryo_level").enable(False)
+        else:
+            self.nametowidget(".cryo_level.cryo_level_bar")['value'] = (self.Regulator.L_Level)
+            # self.nametowidget(".cryo_level").enable(True)
+
 
 if __name__ == "__main__":
     app = K45_Comm()
