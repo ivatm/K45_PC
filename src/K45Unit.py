@@ -7,6 +7,7 @@ Created on 23 жовт. 2021
 #from ecdsa.test_malformed_sigs import params
 #from Tools.pynche.StripViewer import constant
 from pickle import FALSE
+import re
 import time
 import serial
 from xml.sax import _false
@@ -21,15 +22,15 @@ class K45_Unit(object):
     CryoLiquidesLevelMeasureOn = False
     
     ReadBufferLength = 25
-    D_T      = 1   # K/C
+    D_T      = 100   # K/C
     D_t      = 0.1 # mS
     Kprop    = 10
     Kdiff    = 10
     
     Ureal    = 10e-6  # V
-    Treal    = 20
-    Tset     = 20
-    Tcur_set = 20
+    Treal    = 2000
+    Tset     = 2000
+    Tcur_set = 2000
     L_Level  = 90 # %
     
     CoProcessorState = 0
@@ -103,15 +104,25 @@ class K45_Unit(object):
             # Ureal ---------------------------------------------------------------------------------------------------------------------
             self.Ureal = (inBuff[19]  << 16) +(inBuff[18]  << 8) + inBuff[17]
             print("Ureal =" + format(self.Ureal/1000000, ".5f"))
+            # Ureal ---------------------------------------------------------------------------------------------------------------------
+            self.CryoLevel = inBuff[20]
+            print("cryoLevel =" + self.CryoLevel + " %")
             # ---------------------------------------------------------------------------------------------------------------------
-            self.SetOrScanState = inBuff[20]
+            Modes = inBuff[21]
+            self.SetOrScanState = (Modes & 0x1) > 0
             if (self.SetOrScanState > 0):
                 print("Scan mode")
             else:
                 print("Set mode")
+            self.TempSetAchieved    = (Modes & 0x2) > 0
+            self.CelsiumOrKelvin    = (Modes & 0x4) > 0
+            self.CryoLevelMeasuring = (Modes & 0x8) > 0
             # ---------------------------------------------------------------------------------------------------------------------
-            self.CoProcessor = inBuff[21]
-            print("Co processor states =" + "{0:b}".format(self.CoProcessor))
+            self.Status = inBuff[22]
+            self.HeaterError = (self.Status & 0x2) > 0
+            self.CoolerError = (self.Status & 0x4) > 0
+            self.ControlDiodeError = (self.Status & 0x8) > 0
+            print("Status =" + "{0:b}".format(self.Status))
 # -----------------------------------------------------------------------------------
     def VarsUpdate(self, COMConnection):
         if (not COMConnection.isOpen()):
@@ -158,7 +169,8 @@ class K45_Unit(object):
             COMConnection.write(data)
             
 
-    def RemoteSetValue(self, Variable, StrValue, COMConnection):
+    def RemoteCommand(self, Variable, StrValue, COMConnection):
+        StrValue = re.sub("[^0-9,.]", "", StrValue)
         keTset_input             = 2
         keTstep_input            = 4
         ketime_step_input        = 5
@@ -181,7 +193,7 @@ class K45_Unit(object):
             #case 
             print(Variable)
             print(StrValue)
-            self.SendCommand(keTset_input, int(StrValue), COMConnection)
+            self.SendCommand(keTset_input, round(float(StrValue)*100), COMConnection)
         elif Variable=="tcur_set":
             #case 
             print(Variable)
@@ -190,7 +202,7 @@ class K45_Unit(object):
             #case 
             print(Variable)
             print(StrValue)
-            self.SendCommand(keTstep_input, int(StrValue), COMConnection)
+            self.SendCommand(keTstep_input, round(float(StrValue)*100), COMConnection)
         elif Variable=="d_t":
             #case 
             print(Variable)
@@ -212,4 +224,16 @@ class K45_Unit(object):
         else:
             print(Variable)
             print(StrValue)
+
+    def GetTemperatureString(self, TempIntegerValue, NeedConvertion):
+        if self.CelseOrKelvin and NeedConvertion:
+            TempIntegerValue = TempIntegerValue - 27315
+        WorkString = TempIntegerValue/100
+        WorkString = WorkString.__str__()
+        if self.CelseOrKelvin:
+            WorkString = WorkString + " oC"
+        else:
+            WorkString = WorkString + " K"
+        
+        return WorkString
         
