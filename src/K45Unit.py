@@ -21,7 +21,7 @@ class K45_Unit(object):
     CelseOrKelvin = False
     CryoLiquidesLevelMeasureOn = False
     
-    ReadBufferLength = 25
+    ReadBufferLength = 26
     D_T      = 100   # K/C
     D_t      = 0.1 # mS
     Kprop    = 10
@@ -34,6 +34,23 @@ class K45_Unit(object):
     L_Level  = 90 # %
     
     CoProcessorState = 0
+    # ------------------------------------------------------------------------------------
+    keTset_input             = 2
+    keTstep_input            = 4
+    ketime_step_input        = 5
+    keKprop_input            = 6
+    keKdiff_input            = 7
+    keSet_ScanSelect         = 9
+    keTemperatureUnitSwitch  = 11
+    keSaveConfigs            = 12
+    keADCCalibration         = 13
+    keShowSensor             = 14
+    keNop                    = 253  # Nothing to do
+    keRestoreDefaults        = 254
+    keExit                   = 255
+    keUnknownCommand         = 0xFFFF
+
+    
     # ------------------------------------------------------------------------------------
     UnitEvailable = False
 
@@ -48,13 +65,10 @@ class K45_Unit(object):
 # -----------------------------------------------------------------------------------
 
     def receivedProcessing(self, inBuff):
-        beg = ''
-        for x in range(len(inBuff[:3])):
-            beg += chr(inBuff[x])
         
-        end = ''
-        for x in range(len(inBuff[22:])):
-            end += chr(inBuff[22 + x])
+        beg = ''.join([chr(n) for n in inBuff[:3]])
+        
+        end = ''.join([chr(n) for n in inBuff[23:26]]) 
     
         
         if (len(inBuff) != self.ReadBufferLength) or beg != "beg" or  end != "end":
@@ -65,7 +79,7 @@ class K45_Unit(object):
                 beg += chr(inBuff[x])
             
             print("beg = " + beg)
-            print("inBuff[22:24] = " + inBuff[22:25].decode("utf-8"))
+            # print("inBuff[22:24] = " + inBuff[22:25].decode("utf-8"))
             print("Wrong data")
         else:
     
@@ -106,7 +120,7 @@ class K45_Unit(object):
             print("Ureal =" + format(self.Ureal/1000000, ".5f"))
             # Ureal ---------------------------------------------------------------------------------------------------------------------
             self.CryoLevel = inBuff[20]
-            print("cryoLevel =" + self.CryoLevel + " %")
+            print("cryoLevel =" + format(self.CryoLevel,"3.0f") + " %")
             # ---------------------------------------------------------------------------------------------------------------------
             Modes = inBuff[21]
             self.SetOrScanState = (Modes & 0x1) > 0
@@ -129,7 +143,7 @@ class K45_Unit(object):
             return FALSE
         else:
             try:
-                data = [ord('b'),ord('e'),ord('g'),254,0,0,0,ord('e'),ord('n'),ord('d')]
+                data = [ord('b'),ord('e'),ord('g'),self.keNop,0,0,0,ord('e'),ord('n'),ord('d')]
                 COMConnection.write(data)
              
                 out = []
@@ -171,21 +185,11 @@ class K45_Unit(object):
 
     def RemoteCommand(self, Variable, StrValue, COMConnection):
         StrValue = re.sub("[^0-9,.]", "", StrValue)
-        keTset_input             = 2
-        keTstep_input            = 4
-        ketime_step_input        = 5
-        keKprop_input            = 6
-        keKdiff_input            = 7
-        keSet_ScanSelect         = 9
-        keTemperatureUnitSwitch  = 11
-        keSaveConfigs            = 12
-        keADCCalibration         = 13
-        keShowSensor             = 14
-        keNop                    = 254  # Nothing to do
-        keExit                   = 255
-        keUnknownCommand         = 0xFFFF
 
-        if Variable=="treal":
+        if Variable == "set_needed" or Variable == "scan_needed":
+            #case :
+            self.SendCommand(self.keSet_ScanSelect, int(StrValue)  , COMConnection)
+        elif Variable=="treal":
             #case :
             print(Variable)
             print(StrValue)
@@ -193,7 +197,7 @@ class K45_Unit(object):
             #case 
             print(Variable)
             print(StrValue)
-            self.SendCommand(keTset_input, round(float(StrValue)*100), COMConnection)
+            self.SendCommand(self.keTset_input, round(float(StrValue)*100), COMConnection)
         elif Variable=="tcur_set":
             #case 
             print(Variable)
@@ -202,25 +206,27 @@ class K45_Unit(object):
             #case 
             print(Variable)
             print(StrValue)
-            self.SendCommand(keTstep_input, round(float(StrValue)*100), COMConnection)
+            self.SendCommand(self.keTstep_input, round(float(StrValue)*100), COMConnection)
         elif Variable=="d_t":
             #case 
             print(Variable)
             print(StrValue)
-            self.SendCommand(ketime_step_input, int(StrValue), COMConnection)
+            self.SendCommand(self.ketime_step_input, round(float(StrValue)*1000), COMConnection)
         elif Variable=="kprop":
             #case 
             print(Variable)
             print(StrValue)
-            self.SendCommand(keKprop_input, int(StrValue), COMConnection)
+            self.SendCommand(self.keKprop_input, int(StrValue), COMConnection)
         elif Variable=="kdiff":
             #case 
             print(Variable)
             print(StrValue)
-            self.SendCommand(keKdiff_input, int(StrValue), COMConnection)
+            self.SendCommand(self.keKdiff_input, int(StrValue), COMConnection)
         elif Variable=="ureal":
             print(Variable)
             print(StrValue)
+        elif Variable=="pure_command":
+            self.SendCommand(int(StrValue), 0, COMConnection)
         else:
             print(Variable)
             print(StrValue)
@@ -234,6 +240,14 @@ class K45_Unit(object):
             WorkString = WorkString + " oC"
         else:
             WorkString = WorkString + " K"
+        
+        return WorkString
+    
+    def GetTimeString(self, TimeIntegerValue):
+
+        WorkString = float(TimeIntegerValue/1000)
+        WorkString = WorkString.__str__()
+        WorkString = WorkString + " S"
         
         return WorkString
         

@@ -32,11 +32,11 @@ class K45_Comm(tk.Tk):
             print("Againe \n\r")
             if (self.Regulator.VarsUpdate(self.COMConnection)):
                 self.UpdateVariables()
+                # Visual elements update
+                self.UpdateVisuals()
         else:
             print("Wait for COM\n\r")
 
-        # Visual elements update
-        self.UpdateVisuals()
 
     
     def OnQuit(self):
@@ -63,14 +63,27 @@ class K45_Comm(tk.Tk):
             if  (hasattr(self.COMConnection, 'is_open')   and (self.COMConnection.isOpen())):
                 ComStr = CommandEnter.get()
                 ComStr = re.sub("[^0-9]", "", ComStr)
-                self.Regulator.RemoteCommand(str(self.Focused).split(".")[-1], ComStr , self.COMConnection)
+                self.Regulator.RemoteCommand("pure_command", ComStr , self.COMConnection)
+
+        def ModeUpdate():
+            if  (hasattr(self.COMConnection, 'is_open') and (self.COMConnection.isOpen())):
+                if self.SetOrScanState.value > 0:
+                    Value = 0
+                else:
+                    Value = 1
+
+                self.Regulator.RemoteCommand("set_needed", str(Value) , self.COMConnection)
+                self.SetOrScanState.value = Value
+                SetScanSelection_Rb1.update()
+                SetScanSelection_Rb2.update()
+                
 
 
         # K45 Labels and titles -------------------------------------------------------------------------
         self.titeles = Titles(1);
         # K45 Visual variables --------------------------------------------------------------------------
         self.SetOrScanState = IntVar(name = 'SetOrScanState')
-        self.SetOrScanState.set(0)
+        self.SetOrScanState.value = 0
         self.CelseOrKelvin = IntVar(name = 'CelseOrKelvin')
         self.CelseOrKelvin.value = 1
         self.CryoLiquidesLevelMeasureOn = IntVar(name = 'CryoLiquidesLevelMeasureOn')
@@ -99,7 +112,7 @@ class K45_Comm(tk.Tk):
         self.VariableList = [self.Treal, self.Tset, self.Tcur_set, self.D_T, self.D_t, self.Kprop, self.Kdiff, self.L_Level]
         self.VariableListIndex = 0; 
         # SetOrScanState, CelseOrKelvin , CryoLiquidesLevelMeasureOn 
-        self.Regulator = K45_Unit(self.SetOrScanState.get(), self.CelseOrKelvin.get(), self.CryoLiquidesLevelMeasureOn.get())
+        self.Regulator = K45_Unit(bool(self.SetOrScanState.get()), bool(self.CelseOrKelvin.get()), bool(self.CryoLiquidesLevelMeasureOn.get()))
         
 
         # --------------------------------------------------------------------------
@@ -109,21 +122,19 @@ class K45_Comm(tk.Tk):
         K45MenuButton.add_command(label=self.titeles.Menu_Exit, command=self.OnQuit)
         self.config(menu=K45MenuButton)
         
-        # Reception value procedure
-        def SetValueToVariable( Variable, Value):
-            #Variable.set(Value)
-            print("SetOrScanState %d,\n"  % self.SetOrScanState.get())
 
         # Mode Selection and system state --------------------------------------------------------------------------
-        ModeFrame = LabelFrame(self, relief=RAISED, borderwidth = 1, text = self.titeles.Mode_Selection)
+        ModeFrame = LabelFrame(self, relief=RAISED, borderwidth = 1, text = self.titeles.Mode_Selection, name = "settingmode")
         ModeFrame.place(height=50, width=510, x=10, y=20)
         
-        SetScanSelection_Rb1 = Radiobutton(ModeFrame, text = self.titeles.Set, 
-                                           variable = self.SetOrScanState, value = 1)
-        SetScanSelection_Rb2 = Radiobutton(ModeFrame, text = self.titeles.Scan, 
-                                           variable = self.SetOrScanState, value = 0)
+        SetScanSelection_Rb1 = Radiobutton(ModeFrame, text = self.titeles.Set, variable = self.SetOrScanState, value = 0, name = "set_needed" , command = ModeUpdate)
+
+        SetScanSelection_Rb2 = Radiobutton(ModeFrame, text = self.titeles.Scan, variable = self.SetOrScanState, value = 1, name = "scan_needed" , command = ModeUpdate)
+        
         SetScanSelection_Rb1.place(x=20,y=5)
         SetScanSelection_Rb2.place(x=170,y=5)
+        SetScanSelection_Rb1.update()
+        SetScanSelection_Rb2.update()
         
         # PID configurations --------------------------------------------------------------------------
         PIDFrame = LabelFrame(self, relief=RAISED, borderwidth = 1, text = self.titeles.PID_Configs, name = "pid_configs")
@@ -155,7 +166,7 @@ class K45_Comm(tk.Tk):
         
         TimeStepLabel = Label(ScanFrame, text = self.titeles.Scan_time_step)
         TimeStepLabel.place(x=20,y=20)
-        WorkStr = self.D_t.value.__str__()
+        WorkStr = self.Regulator.GetTimeString( self.D_t.value)
         TimeStepEntry = Entry(ScanFrame, name = "d_t")
         TimeStepEntry.insert(END, WorkStr)
         TimeStepEntry.place(x=20,y=40)
@@ -342,13 +353,25 @@ class K45_Comm(tk.Tk):
         self.Kprop.value = self.Regulator.Kprop
         self.Kdiff.value = self.Regulator.Kdiff
         # -------------------------------------------------------------
-        self.SetOrScanState.value = self.Regulator.SetOrScanState
+        self.SetOrScanState.set(int(self.Regulator.SetOrScanState))
         self.CelseOrKelvin.value = self.Regulator.CelseOrKelvin
         self.CryoLiquidesLevelMeasureOn.value = self.Regulator.CryoLiquidesLevelMeasureOn
         # -------------------------------------------------------------
 
     def UpdateVisuals(self):
         
+        if (self.Focused == None or ((self.Focused != self.nametowidget(".pid_configs.scan_needed")) and (self.Focused != self.nametowidget(".pid_configs.set_needed")))):
+            if (self.SetOrScanState.value > 0):
+                self.nametowidget(".settingmode.scan_needed").config(state = "active")
+                self.nametowidget(".settingmode.set_needed").config(state = "normal")
+            else:
+                self.nametowidget(".settingmode.scan_needed").config(state = "normal")
+                self.nametowidget(".settingmode.set_needed").config(state = "active")
+
+        self.nametowidget(".settingmode.scan_needed").update()
+        self.nametowidget(".settingmode.set_needed").update()
+
+
         if (self.Focused == None or self.Focused != self.nametowidget(".pid_configs.kprop")):
             WorkStr = self.Kprop.value.__str__()
             self.nametowidget(".pid_configs.kprop").delete(0, END)
@@ -364,10 +387,8 @@ class K45_Comm(tk.Tk):
             self.nametowidget(".temperature.tset").delete(0, END)
             self.nametowidget(".temperature.tset").insert(END, WorkStr)
         
-#        if (self.Focused == None or self.Focused != self.nametowidget(".temperature.treal")):
-#            WorkStr = self.Regulator.GetTemperatureString(self.Treal.value, True)
-#            self.nametowidget(".temperature.treal").delete(0, END)
-#            self.nametowidget(".temperature.treal").insert(END, WorkStr)
+        if (self.Focused == None or self.Focused != self.nametowidget(".temperature.treal")):
+            WorkStr = self.Regulator.GetTemperatureString(self.Treal.value, True)
         
         self.nametowidget(".temperature.treal").config(text = WorkStr)
 
@@ -377,7 +398,7 @@ class K45_Comm(tk.Tk):
             self.nametowidget(".scan_configs.d_T").insert(END, WorkStr)
 
         if (self.Focused == None or self.Focused != self.nametowidget(".scan_configs.d_t")):
-            WorkStr = self.D_t.value.__str__()
+            WorkStr = self.Regulator.GetTimeString(self.D_t.value)
             self.nametowidget(".scan_configs.d_t").delete(0, END)
             self.nametowidget(".scan_configs.d_t").insert(END, WorkStr)
         
