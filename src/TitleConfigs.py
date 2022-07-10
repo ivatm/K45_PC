@@ -41,10 +41,14 @@ class Titles(object):
     Menu_Connection:str = "Connection"
     Menu_Sensor:str = "Sensor"
     Menu_Exit:str = "Quit"
-    # -------------------------------------------------------------------------
+# -------------------------------------------------------------------------
     Interface_Configuration:str = "Interface Configuration"
     COM_Port_Selection:str = "COM Port Selection"
     Bauderate_Selection:str = "Bauderate Selection"
+# -------------------------------------------------------------------------
+    SensorFile: str = "Sensor File"
+    Path: str = "Path"
+    SendCommand: str = "Send"
 
     def __init__(self, Lang):
         '''
@@ -91,6 +95,11 @@ class Titles(object):
             self.Interface_Configuration = "Interface Configuration"
             self.COM_Port_Selection = "COM Port Selection"
             self.Bouderate_Selection = "Bouderate Selection"
+            # -------------------------------------------------------------------------
+            self.SensorFile: str  = "Sensor File"
+            self.Path: str        = "Path"
+            self.SendCommand: str = "Send"
+
         else:
 
             self.title = "K45"
@@ -129,3 +138,7 @@ class Titles(object):
             self.Interface_Configuration = "РќР°Р»Р°С€С‚СѓРІР°РЅРЅСЏ С–РЅС‚РµСЂС„РµР№СЃСѓ"
             self.COM_Port_Selection = "COM РїРѕСЂС‚"
             self.Bauderate_Selection = "РЁРІРёРґРєС–СЃС‚СЊ РїРµСЂРµРґР°С‡С– РґР°РЅРёС…"
+            # -------------------------------------------------------------------------
+            self.SensorFile: str  = "Sensor File"   # = "Файл даних сенсора"
+            self.Path: str        = "Path"          # = "Шлях"
+            self.SendCommand: str = "Send"          # = "Записати"

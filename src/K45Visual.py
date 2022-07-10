@@ -107,6 +107,11 @@ class K45_Comm(tk.Tk):
         self.L_Level = IntVar(name = 'L_Level')
         self.L_Level.value = 50
         self.userCommand = StringVar(name = 'user_Command')
+        self.HeaterError = False
+        self.CoolerError = False
+        self.ControlDiodeError = False
+        self.CryoLevel = 100
+        
         self.userCommand = "*"
         
         self.VariableList = [self.Treal, self.Tset, self.Tcur_set, self.D_T, self.D_t, self.Kprop, self.Kdiff, self.L_Level]
@@ -214,28 +219,28 @@ class K45_Comm(tk.Tk):
         # BtnLeft.pack(side="top")
         # BtnLeft.place(x=10, y=13)
         # 
-        # BtnRight = Button(StatusFrame, text=">")#, command=lambda : self.IncValNumber())
-        # BtnRight.pack(side="top")
-        # BtnRight.place(x=240, y=13)
+        # BtnFreeCommand = Button(StatusFrame, text=">")#, command=lambda : self.IncValNumber())
+        # BtnFreeCommand.pack(side="top")
+        # BtnFreeCommand.place(x=240, y=13)
 
         CommandEnter = Entry(StatusFrame, textvariable=self.userCommand)
         CommandEnter.insert(END, "*")
         CommandEnter.place(x=10,width=95,y=15) 
 
-        BtnRight = Button(StatusFrame, text="#", command=CommandSet)
-        BtnRight.pack(side="top")
-        BtnRight.place(x=110, y=13)
+        BtnFreeCommand = Button(StatusFrame, text="#", command=CommandSet)
+        BtnFreeCommand.pack(side="top")
+        BtnFreeCommand.place(x=110, y=13)
 
         ConnectionState = tk.Label(StatusFrame, anchor="c", text = self.titeles.ConnectionState, bg="light gray" , height=1, width=20, name = "connection_state" )
         ConnectionState.place(x=0,y=65,width=127)
         
-        HeaterState = tk.Label(StatusFrame, anchor="c", text = self.titeles.HeaterState, bg="light gray" , fg = "green" , height=1, width=20,name = "heater_state" )
+        HeaterState = tk.Label(StatusFrame, anchor="c", text = self.titeles.HeaterState, bg="light gray" , fg = "black" , height=1, width=20,name = "heater_state" )
         HeaterState.place(x=128,y=65,width=127)
         
-        CoolerState = tk.Label(StatusFrame, anchor="c", text = self.titeles.CoolerState, bg="light gray" , fg = "green" , height=1, width=20, name = "cooler_state" )
+        CoolerState = tk.Label(StatusFrame, anchor="c", text = self.titeles.CoolerState, bg="light gray" , fg = "black" , height=1, width=20, name = "cooler_state" )
         CoolerState.place(x=256,y=65,width=127)
         
-        DiodeState = tk.Label(StatusFrame, anchor="c", text = self.titeles.DiodeState, bg="light gray" , fg = "green", height=1, width=20, name = "contr_diod_state" )
+        DiodeState = tk.Label(StatusFrame, anchor="c", text = self.titeles.DiodeState, bg="light gray" , fg = "black", height=1, width=20, name = "contr_diod_state" )
         DiodeState.place(x=384,y=65,width=127)
         
         # Cryo liquides level --------------------------------------------------------------------------
@@ -262,6 +267,21 @@ class K45_Comm(tk.Tk):
         self.t = Thread(target=background_task, args = (1, self.CommunicationHandle))
         self.t.start()
         
+        # Sensor file to be sent to K45 Module. The widgets here remain unvisible until the according file is not selected
+        SensorFileFrame = LabelFrame(self, relief=RAISED, borderwidth = 1, text = self.titeles.SensorFile, name="sensor_file")
+        SensorFileFrame.place(height=100, width=510, x=10, y=520)
+        # do it invisible now!
+          
+        SensorFilePath = Entry(SensorFileFrame, name = "file_path")
+        SensorFilePath.insert(END, "")
+        SensorFilePath.place(width=410,x=10,y=10)
+
+        SensorTransmittingProgress = Progressbar(SensorFileFrame, orient=HORIZONTAL, length=480,  mode='determinate', name="sensortx_bar")
+        SensorTransmittingProgress.place(x=10, y=40)
+
+        BtnRight = Button(SensorFileFrame, text=self.titeles.SendCommand, command=CommandSet)
+        BtnRight.pack(side="top")
+        BtnRight.place(width=70,x=420, y=9)
 
 
     def Create_InitCommunication(self):
@@ -360,7 +380,7 @@ class K45_Comm(tk.Tk):
 
     def UpdateVisuals(self):
         
-        if (self.Focused == None or ((self.Focused != self.nametowidget(".pid_configs.scan_needed")) and (self.Focused != self.nametowidget(".pid_configs.set_needed")))):
+        if (self.Focused == None or ((self.Focused != self.nametowidget(".settingmode.scan_needed")) and (self.Focused != self.nametowidget(".settingmode.set_needed")))):
             if (self.SetOrScanState.value > 0):
                 self.nametowidget(".settingmode.scan_needed").config(state = "active")
                 self.nametowidget(".settingmode.set_needed").config(state = "normal")
@@ -412,32 +432,31 @@ class K45_Comm(tk.Tk):
             
         #if not (hasattr(self.COMConnection, 'is_open') and (self.COMConnection.isOpen())):
         if (hasattr(self.COMConnection, 'is_open') and (self.COMConnection.isOpen())):
-            self.nametowidget(".status_frame.connection_state").config(fg="red")
-            self.nametowidget(".status_frame.heater_state").config(fg="black")
-            self.nametowidget(".status_frame.cooler_state").config(fg="black")
-            self.nametowidget(".status_frame.contr_diod_state").config(fg="black")
-        else:
             self.nametowidget(".status_frame.connection_state").config(fg="green")
             if (self.HeaterError):
                 self.nametowidget(".status_frame.heater_state").config(fg="red")
             else:
-                self.nametowidget(".status_frame.heater_state").config(fg="green")
+                self.nametowidget(".status_frame.heater_state").config(fg="black")
             
             if (self.CoolerError):
                 self.nametowidget(".status_frame.cooler_state").config(fg="red")
             else:
-                self.nametowidget(".status_frame.cooler_state").config(fg="green")
+                self.nametowidget(".status_frame.cooler_state").config(fg="black")
             
             if (self.ControlDiodeError):
                 self.nametowidget(".status_frame.contr_diod_state").config(fg="red")
             else:
-                self.nametowidget(".status_frame.contr_diod_state").config(fg="green")
-               
+                self.nametowidget(".status_frame.contr_diod_state").config(fg="black")
              
-            if TRUE:#(self.CryoLiquidesLevelMeasureOn):
-                self.nametowidget(".cryo_level.cryo_level_bar")["value"] = 75#.update(self.CryoLevel)
+            if (self.CryoLiquidesLevelMeasureOn):
+                self.nametowidget(".cryo_level.cryo_level_bar")["value"] = self.CryoLevel
             else:
                 self.nametowidget(".cryo_level.cryo_level_bar")["value"] = 0
+        else:
+            self.nametowidget(".status_frame.connection_state").config(fg="red")
+            self.nametowidget(".status_frame.heater_state").config(fg="black")
+            self.nametowidget(".status_frame.cooler_state").config(fg="black")
+            self.nametowidget(".status_frame.contr_diod_state").config(fg="black")
             
             
 if __name__ == "__main__":
