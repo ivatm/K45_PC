@@ -10,7 +10,9 @@ from tkinter import ttk
 from tkinter import *
 from tkinter.ttk import *
 from K45Unit import K45_Unit
+from SensorTx import SensorTransmitter
 from TitleConfigs import Titles
+from tkinter import filedialog
 
 import serial
 from serial.tools.list_ports_windows import iterate_comports
@@ -38,6 +40,13 @@ class K45_Comm(tk.Tk):
             print("Wait for COM\n\r")
 
 
+    def SensorInit(self):
+        file_path = filedialog.askopenfilename()
+        self.nametowidget(".sensor_file.file_path").insert(0, file_path)
+        try:
+            self.SensorTransmitter = SensorTransmitter(file_path)
+        except Exception as e:
+            print("Can't open file :{}\n".format(str(e)))
     
     def OnQuit(self):
         self. t._target.cancelled = True
@@ -123,7 +132,7 @@ class K45_Comm(tk.Tk):
         # --------------------------------------------------------------------------
         K45MenuButton = Menu(self)
         K45MenuButton.add_command(label=self.titeles.Menu_Connection, command = self.Create_InitCommunication)
-        K45MenuButton.add_command(label=self.titeles.Menu_Sensor)
+        K45MenuButton.add_command(label=self.titeles.Menu_Sensor, command = self.SensorInit)
         K45MenuButton.add_command(label=self.titeles.Menu_Exit, command=self.OnQuit)
         self.config(menu=K45MenuButton)
         
@@ -279,9 +288,9 @@ class K45_Comm(tk.Tk):
         SensorTransmittingProgress = Progressbar(SensorFileFrame, orient=HORIZONTAL, length=480,  mode='determinate', name="sensortx_bar")
         SensorTransmittingProgress.place(x=10, y=40)
 
-        BtnRight = Button(SensorFileFrame, text=self.titeles.SendCommand, command=CommandSet)
-        BtnRight.pack(side="top")
-        BtnRight.place(width=70,x=420, y=9)
+        BtnSend = Button(SensorFileFrame, text=self.titeles.SendCommand, command=CommandSet)
+        BtnSend.pack(side="top")
+        BtnSend.place(width=70,x=420, y=9)
 
 
     def Create_InitCommunication(self):

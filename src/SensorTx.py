@@ -1,6 +1,5 @@
 '''
-Created on 10 лип. 2022 р.
-
+Created on 10.07.2022
 @author: Iva
 '''
 
@@ -15,4 +14,7 @@ class SensorTransmitter(object):
         Constructor
         The Constructor receives file description
         '''
+        f = open(SensorFileDef,'r')
+        AllTMH = f.readlines()
+        print("File length ", len(AllTMH))
         
