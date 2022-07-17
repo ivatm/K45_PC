@@ -16,5 +16,5 @@ class SensorTransmitter(object):
         '''
         f = open(SensorFileDef,'r')
         AllTMH = f.readlines()
-        print("File length ", len(AllTMH))
+        #print("File length ", len(AllTMH))
         

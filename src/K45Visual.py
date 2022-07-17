@@ -31,13 +31,14 @@ class K45_Comm(tk.Tk):
     
     def CommunicationHandle(self):
         if (hasattr(self.COMConnection, 'is_open') and (self.COMConnection.isOpen())):
-            print("Againe \n\r")
+            #print("Againe \n\r")
             if (self.Regulator.VarsUpdate(self.COMConnection)):
                 self.UpdateVariables()
                 # Visual elements update
                 self.UpdateVisuals()
         else:
-            print("Wait for COM\n\r")
+            #print("Wait for COM\n\r")
+            return
 
 
     def SensorInit(self):
@@ -47,6 +48,7 @@ class K45_Comm(tk.Tk):
             self.SensorTransmitter = SensorTransmitter(file_path)
         except Exception as e:
             print("Can't open file :{}\n".format(str(e)))
+            
     
     def OnQuit(self):
         self. t._target.cancelled = True
@@ -362,7 +364,7 @@ class K45_Comm(tk.Tk):
             except Exception as e:
                 #"{}: {} [{}]".format(port, desc, hwid))
                 self.COMConnection = None
-                print("Can't set COM Port:{}\n".format(str(e)))
+                #print("Can't set COM Port:{}\n".format(str(e)))
 
     def Close_InitCommunication(self):
         # IMPORTANT!

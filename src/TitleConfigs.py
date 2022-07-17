@@ -1,5 +1,5 @@
 f'''
-Created on 23 Р¶РѕРІС‚. 2021
+Created on 23 жовт. 2021
 
 @author: Oliva
 '''
@@ -103,42 +103,42 @@ class Titles(object):
         else:
 
             self.title = "K45"
-            self.Mode_Selection = "Р’РёР±С–СЂ СЂРµР¶РёРјСѓ"
-            self.Set = "Р’СЃС‚Р°РЅРѕРІРёС‚Рё"
-            self.Scan = "Р РѕР·РіРѕСЂС‚РєР°"
+            self.Mode_Selection = "Вибір режиму"
+            self.Set = "Встановити"
+            self.Scan = "Розгортка"
             # -----------------------------------------------------------------------
-            self.PID_Configs = "PID РїР°СЂР°РјРµС‚СЂРё"
-            self.Kprop = "KP-РїСЂРѕРїРѕСЂС†С–РѕРЅР°Р»СЊРЅРёР№ РєРѕРµС„С–С†С–С”РЅС‚"
-            self.Kdiff = "KD-РґРёС„РµСЂРµРЅС†С–Р№РЅРёР№ РєРѕРµС„С–С†С–С”РЅС‚"
+            self.PID_Configs = "PID параметри"
+            self.Kprop = "KP-пропорціональний коефіцієнт"
+            self.Kdiff = "KD-диференційний коефіцієнт"
             # -----------------------------------------------------------------------
-            self.Scan_configs = "РќР°Р»Р°С€С‚СѓРІР°РЅРЅСЏ СЂРѕР·РіРѕСЂС‚РєРё"
-            self.Scan_time_step = "dt - РљСЂРѕРє РїРѕ С‡Р°СЃСѓ"
-            self.Scan_temperature_step = "dT - РљСЂРѕРє РїРѕ С‚РµРјРїРµСЂР°С‚СѓСЂС–"
+            self.Scan_configs = "Налаштування розгортки"
+            self.Scan_time_step = "dt - Крок по часу"
+            self.Scan_temperature_step = "dT - Крок по температурі"
             # -----------------------------------------------------------------------
-            self.Temperatures = "РўРµРјРїРµС‚Р°СЂСѓСЂР°"
-            self.Measured = "Р’РёРјС–СЂСЏРЅР°"
-            self.Setting_Temperaure = "Р’СЃС‚Р°РЅРѕРІР»РµРЅРЅСЏ"
-            self.Set_Temperaure = "РњРµС‚Р°"
+            self.Temperatures = "Темпетарура"
+            self.Measured = "Виміряна"
+            self.Setting_Temperaure = "Встановлення"
+            self.Set_Temperaure = "Мета"
             # -----------------------------------------------------------------------
-            self.Service_values = "РЎРµСЂРІС–СЃРЅС– РІРµР»РёС‡РёРЅРё"
-            self.Sensor_Voltage = "РќР°РїСЂСѓРіР° РЅР° СЃРµРЅСЃРѕСЂС–"
+            self.Service_values = "Сервісні величини"
+            self.Sensor_Voltage = "Напруга на сенсорі"
             # -----------------------------------------------------------------------
-            self.CryoLevel = "Р С–РІРµРЅСЊ РєСЂС–РѕРіРµРЅС‚Р°"
+            self.CryoLevel = "Рівень кріогента"
             # -----------------------------------------------------------------------
-            self.Status = "РЎС‚Р°С‚СѓСЃ"
-            self.ConnectionState = "Р—РІ'Р·РѕРє"
-            self.HeaterState = "РќР°РіСЂС–РІР°С‡"
-            self.CoolerState = "Р’РёРїР°СЂРѕРІСѓРІР°С‡"
-            self.DiodeState = "Р”С–РѕРґ"
+            self.Status = "Статус"
+            self.ConnectionState = "Зв'зок"
+            self.HeaterState = "Нагрівач"
+            self.CoolerState = "Випаровувач"
+            self.DiodeState = "Діод"
             # -----------------------------------------------------------------------
-            self.Menu_Connection = "Р†РЅС‚РµСЂС„РµР№СЃ"
-            self.Menu_Sensor     = "РЎРµРЅСЃРѕСЂ"
-            self.Menu_Exit       = "Р’РёС…С–Рґ"
+            self.Menu_Connection = "Інтерфейс"
+            self.Menu_Sensor     = "Сенсор"
+            self.Menu_Exit       = "Вихід"
             # -------------------------------------------------------------------------
-            self.Interface_Configuration = "РќР°Р»Р°С€С‚СѓРІР°РЅРЅСЏ С–РЅС‚РµСЂС„РµР№СЃСѓ"
-            self.COM_Port_Selection = "COM РїРѕСЂС‚"
-            self.Bauderate_Selection = "РЁРІРёРґРєС–СЃС‚СЊ РїРµСЂРµРґР°С‡С– РґР°РЅРёС…"
+            self.Interface_Configuration = "Налаштування інтерфейсу"
+            self.COM_Port_Selection = "COM порт"
+            self.Bauderate_Selection = "Швидкість передачі даних"
             # -------------------------------------------------------------------------
-            self.SensorFile: str  = "Sensor File"   # = "Файл даних сенсора"
-            self.Path: str        = "Path"          # = "Шлях"
-            self.SendCommand: str = "Send"          # = "Записати"
+            self.SensorFile: str  = "Sensor File"   
+            self.Path: str        = "Path"          
+            self.SendCommand: str = "Send"          
