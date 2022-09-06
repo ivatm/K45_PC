@@ -18,6 +18,7 @@ import serial
 from serial.tools.list_ports_windows import iterate_comports
 from _ast import List
 import logging
+from time import sleep
 
 '''
   Good examples for Timers
@@ -32,10 +33,23 @@ class K45_Comm(tk.Tk):
     def CommunicationHandle(self):
         if (hasattr(self.COMConnection, 'is_open') and (self.COMConnection.isOpen())):
             #print("Againe \n\r")
-            if (self.Regulator.VarsUpdate(self.COMConnection)):
+            if (self.SensorTransmitter.Transmitting):
+                # Nothing to do - wait for transmittion end
+                sleep(1)
+            elif (self.Regulator.VarsUpdate(self.COMConnection)):
                 self.UpdateVariables()
                 # Visual elements update
                 self.UpdateVisuals()
+        else:
+            #print("Wait for COM\n\r")
+            return
+
+    def SensorTransmitionHandle(self):
+        if (hasattr(self.COMConnection, 'is_open' and (self.COMConnection.isOpen()))):
+            #print("Againe \n\r")
+            if (self.SensorTransmitter.SensorReady and self.SensorTransmitter.Transmitting and self.SensorTransmitter.DataSensorLineSend(self, self.COMConnection, self.Regulator)):
+                # Nothing to do - wait for transmittion end
+                sleep(1)
         else:
             #print("Wait for COM\n\r")
             return
@@ -277,6 +291,16 @@ class K45_Comm(tk.Tk):
         background_task.cancelled = False
         self.t = Thread(target=background_task, args = (1, self.CommunicationHandle))
         self.t.start()
+
+        #def sensor_transmition_task(Period, Handle):
+        #    while not sensor_transmition_task.cancelled:
+        #        Handle()
+        #        time.sleep(Period)
+        #sensor_transmition_task.cancelled = False
+        #self.t2 = Thread(target=sensor_transmition_task, args = (1, self.SensorTransmitionHandle))
+        #self.t2.start()
+
+
         
         # Sensor file to be sent to K45 Module. The widgets here remain unvisible until the according file is not selected
         SensorFileFrame = LabelFrame(self, relief=RAISED, borderwidth = 1, text = self.titeles.SensorFile, name="sensor_file")
@@ -289,6 +313,8 @@ class K45_Comm(tk.Tk):
 
         SensorTransmittingProgress = Progressbar(SensorFileFrame, orient=HORIZONTAL, length=480,  mode='determinate', name="sensortx_bar")
         SensorTransmittingProgress.place(x=10, y=40)
+
+# ---------------------------------------------------------------------------------------------------------------------------------------
 
         BtnSend = Button(SensorFileFrame, text=self.titeles.SendCommand, command=CommandSet)
         BtnSend.pack(side="top")

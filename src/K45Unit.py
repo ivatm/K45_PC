@@ -45,6 +45,8 @@ class K45_Unit(object):
     keSaveConfigs            = 12
     keADCCalibration         = 13
     keShowSensor             = 14
+    keSendSensor             = 100
+    keSensorComplete         = 101
     keNop                    = 253  # Nothing to do
     keRestoreDefaults        = 254
     keExit                   = 255
@@ -165,11 +167,11 @@ class K45_Unit(object):
                     #print(out)
                     self.receivedProcessing( out)
                 UnitEvailable = True
-                return True
+                return UnitEvailable
             except Exception as e:                
                 #print("Can't set COM Port:{}\n".format(str(e)))
                 UnitEvailable = False
-                return False
+                return UnitEvailable
     
     def SendCommand(self, Command, Value, COMConnection):
         if (not COMConnection.isOpen()):
