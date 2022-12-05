@@ -48,7 +48,7 @@ class Titles(object):
 # -------------------------------------------------------------------------
     SensorFile: str = "Sensor File"
     Path: str = "Path"
-    SendCommand: str = "Send"
+    SensorSendCommand: str = "Send"
 
     def __init__(self, Lang):
         '''
@@ -98,7 +98,7 @@ class Titles(object):
             # -------------------------------------------------------------------------
             self.SensorFile: str  = "Sensor File"
             self.Path: str        = "Path"
-            self.SendCommand: str = "Send"
+            self.SensorSendCommand: str = "Send"
 
         else:
 
@@ -141,4 +141,4 @@ class Titles(object):
             # -------------------------------------------------------------------------
             self.SensorFile: str  = "Sensor File"   
             self.Path: str        = "Path"          
-            self.SendCommand: str = "Send"          
+            self.SensorSendCommand: str = "Send"          

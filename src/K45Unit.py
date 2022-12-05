@@ -12,6 +12,27 @@ import time
 import serial
 from xml.sax import _false
 
+def CheckSumCheck(Array):
+    Sum = 0
+    for Index in range(len(Array) - 4):
+        Sum = Sum + Array[Index]
+    Sum = Sum & 0xFF
+    if (Sum == Array[len(Array) - 4]):
+        return True
+    else:
+        return False
+ 
+def GetCheckSum(Array):
+    Sum = 0
+    for Index in range(len(Array)):
+        if (type(Array[Index]) == int):
+            Sum = Sum + Array[Index]
+        else:
+            Sum = Sum + ord(Array[Index])
+        
+    Sum = Sum & 0xFF
+    return(Sum)
+
 
 class K45_Unit(object):
     '''
@@ -21,7 +42,14 @@ class K45_Unit(object):
     CelseOrKelvin = False
     CryoLiquidesLevelMeasureOn = False
     
-    ReadBufferLength = 26
+    # Max length of received telegram
+    ReadBufferLength = 28  # Telegram length in case common data transmition: 3-Start + 1-Commant + 20-Data + 1-CheckSum +3-End
+    SensorReceptionAnswerLength = 9  # Telegram length in case common data transmition: 3-Start + 1-Commant + 1-Ok/NoK + 1-CheckSum + 3-End
+    
+    #Telegram code (K45 aswer command number) place
+    CommandPlace = 3
+    SubCommandPlace = 4
+    
     D_T      = 100   # K/C
     D_t      = 0.1 # mS
     Kprop    = 10
@@ -35,6 +63,25 @@ class K45_Unit(object):
     
     CoProcessorState = 0
     # ------------------------------------------------------------------------------------
+    # All K45 to PC answers
+    keSimpleTelegram     = 0
+    keSensorLineReceived = 1
+    # ------------------------------------------------------------------------------------
+    TrealPlace = 4
+    TsetPlace = 6
+    Tcur_setPlace = 8
+    D_TPlace = 10
+    D_tPlace = 12
+    KpropPlace = 14
+    KdiffPlace = 16
+    UrealPlace = 18
+    CryoLevelPlace = 21
+    ModesPlace = 22
+    StatusPlace = 23
+
+    # ------------------------------------------------------------------------------------
+    
+    # All PC to K45 commands
     keTset_input             = 2
     keTstep_input            = 4
     ketime_step_input        = 5
@@ -66,14 +113,19 @@ class K45_Unit(object):
     
 # -----------------------------------------------------------------------------------
 
+    '''Procedure checks and processes a telegramm from unit K45
+    Parameters:
+    self - self
+    inBuff - received data array
+    '''
     def receivedProcessing(self, inBuff):
         
         beg = ''.join([chr(n) for n in inBuff[:3]])
         
-        end = ''.join([chr(n) for n in inBuff[23:26]]) 
+        end = ''.join([chr(n) for n in inBuff[(self.ReadBufferLength - 3):]]) 
     
         
-        if (len(inBuff) != self.ReadBufferLength) or beg != "beg" or  end != "end":
+        if beg != "beg" or  end != "end":
             #print("Length = " + str(len(inBuff)))
             
             beg = ''
@@ -82,8 +134,10 @@ class K45_Unit(object):
             
             #print("beg = " + beg)
             # print("inBuff[22:24] = " + inBuff[22:25].decode("utf-8"))
-            #print("Wrong data")
-        else:
+            print("Wrong data")
+            return False
+
+        elif (len(inBuff) == self.ReadBufferLength) and (inBuff[self.CommandPlace] == self.keSimpleTelegram) and CheckSumCheck(inBuff):
     
             #   keTreal,      //   lTemperatureReal,
             #   keTset,       //   lTemperatureSet,
@@ -97,34 +151,34 @@ class K45_Unit(object):
             #   keMaxVariableNum
             
             # Treal set        
-            self.Treal = (inBuff[4]  << 8) + inBuff[3]
+            self.Treal = (inBuff[self.TrealPlace + 1]  << 8) + inBuff[self.TrealPlace]
             #print("Treal =" + format(self.Treal/100, ".2f"))
             # Tset set ---------------------------------------------------------------------------------------------------------------------
-            self.Tset = (inBuff[6]  << 8) + inBuff[5]
+            self.Tset = (inBuff[self.TsetPlace + 1]  << 8) + inBuff[self.TsetPlace]
             #print("Tset =" + format(self.Tset/100, ".2f"))
             # Tcur_set set ---------------------------------------------------------------------------------------------------------------------
-            self.Tcur_set = (inBuff[8]  << 8) + inBuff[7]
+            self.Tcur_set = (inBuff[self.Tcur_setPlace + 1]  << 8) + inBuff[self.Tcur_setPlace]
             #print("Tcur_set =" + format(self.Tcur_set/100, ".2f"))
             # D_T ---------------------------------------------------------------------------------------------------------------------
-            self.D_T = (inBuff[10]  << 8) + inBuff[9]
+            self.D_T = (inBuff[self.D_TPlace + 1]  << 8) + inBuff[self.D_TPlace]
             #print("D_T = " + format(self.D_T/100, ".2f"))
             # D_t ---------------------------------------------------------------------------------------------------------------------
-            self.D_t = (inBuff[12]  << 8) + inBuff[11]
+            self.D_t = (inBuff[self.D_tPlace + 1]  << 8) + inBuff[self.D_tPlace]
             #print("D_t = " + format(self.D_t/1000, ".2f"))
             # Kprop ---------------------------------------------------------------------------------------------------------------------
-            self.Kprop = (inBuff[14]  << 8) + inBuff[13]
+            self.Kprop = (inBuff[self.KpropPlace + 1]  << 8) + inBuff[self.KpropPlace]
             #print("Kprop =" + format(self.Kprop, "d"))
             # Kdiff ---------------------------------------------------------------------------------------------------------------------
-            self.Kdiff = (inBuff[16]  << 8) + inBuff[15]
+            self.Kdiff = (inBuff[self.KdiffPlace + 1]  << 8) + inBuff[self.KdiffPlace]
             #print("Kdiff =" + format(self.Kdiff, "d"))
             # Ureal ---------------------------------------------------------------------------------------------------------------------
-            self.Ureal = (inBuff[19]  << 16) +(inBuff[18]  << 8) + inBuff[17]
+            self.Ureal = (inBuff[self.UrealPlace + 2]  << 16) +(inBuff[self.UrealPlace + 1]  << 8) + inBuff[self.UrealPlace]
             #print("Ureal =" + format(self.Ureal/1000000, ".5f"))
             # Ureal ---------------------------------------------------------------------------------------------------------------------
-            self.CryoLevel = inBuff[20]
+            self.CryoLevel = inBuff[self.CryoLevelPlace]
             #print("cryoLevel =" + format(self.CryoLevel,"3.0f") + " %")
             # ---------------------------------------------------------------------------------------------------------------------
-            Modes = inBuff[21]
+            Modes = inBuff[self.ModesPlace]
             self.SetOrScanState = (Modes & 0x1) > 0
             #if (self.SetOrScanState > 0):
                 #print("Scan mode")
@@ -134,18 +188,41 @@ class K45_Unit(object):
             self.CelsiumOrKelvin    = (Modes & 0x4) > 0
             self.CryoLevelMeasuring = (Modes & 0x8) > 0
             # ---------------------------------------------------------------------------------------------------------------------
-            self.Status = inBuff[22]
+            self.Status = inBuff[self.StatusPlace]
+            
             self.HeaterError = (self.Status & 0x2) > 0
             self.CoolerError = (self.Status & 0x4) > 0
             self.ControlDiodeError = (self.Status & 0x8) > 0
             #print("Status =" + "{0:b}".format(self.Status))
+            return True
+
+        elif (len(inBuff) != self.SensorReceptionAnswerLength) and (inBuff[self.CommandPlace] == self.keSensorLineReceived) and CheckSumCheck(inBuff):
+            if inBuff[self.SubCommandPlace] == True:
+                #answer is Ok
+                return True
+            else:
+                return False
+        else:
+                        #print("Length = " + str(len(inBuff)))
+            
+            beg = ''
+            for x in range(len(inBuff[:3])):
+                beg += chr(inBuff[x])
+            
+            #print("beg = " + beg)
+            # print("inBuff[22:24] = " + inBuff[22:25].decode("utf-8"))
+            #print("Wrong data")
+            return False
+
 # -----------------------------------------------------------------------------------
     def VarsUpdate(self, COMConnection):
         if (not COMConnection.isOpen()):
             return FALSE
         else:
             try:
-                data = [ord('b'),ord('e'),ord('g'),self.keNop,0,0,0,ord('e'),ord('n'),ord('d')]
+                data = [ord('b'),ord('e'),ord('g'),self.keNop,0,0,0]
+                CheckSumValue = GetCheckSum(data)
+                data = [*data, CheckSumValue,ord('e'),ord('n'),ord('d') ]
                 COMConnection.write(data)
              
                 out = []
@@ -164,7 +241,7 @@ class K45_Unit(object):
                     out += COMConnection.read(1)
                    
                 if out != '':
-                    #print(out)
+                    print(out)
                     self.receivedProcessing( out)
                 UnitEvailable = True
                 return UnitEvailable
@@ -177,14 +254,35 @@ class K45_Unit(object):
         if (not COMConnection.isOpen()):
             return FALSE
         else:
-            data = [ord('b'),ord('e'),ord('g'),Command,0,0,0,ord('e'),ord('n'),ord('d')]
+            data = [ord('b'),ord('e'),ord('g'),Command,0,0,0]
             WorkByte = Value & 0xFF
             data[4] = WorkByte
             WorkByte = (Value >> 8) & 0xFF
             data[5] = WorkByte
+            CheckSumValue = GetCheckSum(data)
+            data =  [*data, CheckSumValue, ord('e'),ord('n'),ord('d')]
+            print(data)
             COMConnection.write(data)
             
-
+    '''
+    def CheckSumCheck(self, Array):
+        Sum = 0
+        for Index in range(len(Array) - 4):
+            Sum = Sum + Array[Index]
+        Sum = Sum & 0xFF
+        if (Sum == Array[len(Array) - 4]):
+            return True
+        else:
+            return False
+     
+    def GetCheckSum(self, Array):
+        Sum = 0
+        for Index in range(len(Array)-1):
+            Sum = Sum + Array[Index]
+        Sum = Sum & 0xFF
+        return(Sum)
+    '''            
+    
     def RemoteCommand(self, Variable, StrValue, COMConnection):
         StrValue = re.sub("[^0-9,.]", "", StrValue)
 

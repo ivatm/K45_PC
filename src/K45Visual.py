@@ -32,24 +32,31 @@ class K45_Comm(tk.Tk):
     
     def CommunicationHandle(self):
         if (hasattr(self.COMConnection, 'is_open') and (self.COMConnection.isOpen())):
-            #print("Againe \n\r")
-            if (self.SensorTransmitter.Transmitting):
-                # Nothing to do - wait for transmittion end
-                sleep(1)
-            elif (self.Regulator.VarsUpdate(self.COMConnection)):
-                self.UpdateVariables()
-                # Visual elements update
-                self.UpdateVisuals()
+            if ((not hasattr(self, 'SensDataSender')) or (not self.SensDataSender.Transmitting) or (not self.SensDataSender.SensorReady)):
+                self.nametowidget(".sensor_file.sensortx_bar")["value"] = 0
+                if (self.Regulator.VarsUpdate(self.COMConnection)):
+                    self.UpdateVariables()
+                    # Visual elements update
+                    self.UpdateVisuals()
+            else:
+                #round((100 * self.SensDataSender.IndexTMH / self.SensDataSender.TMHLength),0)
+                if (self.SensDataSender.TMHLength != 0):
+                    self.nametowidget(".sensor_file.sensortx_bar")["value"] = round((100 * self.SensDataSender.IndexTMH / self.SensDataSender.TMHLength),0) 
+            
         else:
             #print("Wait for COM\n\r")
             return
 
     def SensorTransmitionHandle(self):
-        if (hasattr(self.COMConnection, 'is_open' and (self.COMConnection.isOpen()))):
+        if (hasattr(self.COMConnection, 'is_open') and (self.COMConnection.isOpen())):
             #print("Againe \n\r")
-            if (self.SensorTransmitter.SensorReady and self.SensorTransmitter.Transmitting and self.SensorTransmitter.DataSensorLineSend(self, self.COMConnection, self.Regulator)):
-                # Nothing to do - wait for transmittion end
-                sleep(1)
+            if (self.SensDataSender.SensorReady and self.SensDataSender.Transmitting):
+                if (self.SensDataSender.DataSensorLineSend( self.COMConnection)):
+                    # Nothing to do - wait for transmittion end
+                    sleep(0.1)
+                else:
+                    #Stop transmiting
+                    self.SensDataSender.Transmitting = False
         else:
             #print("Wait for COM\n\r")
             return
@@ -57,9 +64,14 @@ class K45_Comm(tk.Tk):
 
     def SensorInit(self):
         file_path = filedialog.askopenfilename()
+        CurText = self.nametowidget(".sensor_file.file_path").get()
+        if (len(CurText)>0):
+            self.nametowidget(".sensor_file.file_path").select_range(0,len(CurText))
+            self.nametowidget(".sensor_file.file_path").delete(0, len(CurText))
         self.nametowidget(".sensor_file.file_path").insert(0, file_path)
+
         try:
-            self.SensorTransmitter = SensorTransmitter(file_path)
+            self.SensDataSender = SensorTransmitter(file_path)
         except Exception as e:
             print("Can't open file :{}\n".format(str(e)))
             
@@ -71,24 +83,47 @@ class K45_Comm(tk.Tk):
         self.destroy()
     
     def __init__(self, *args, **kwargs):
+        
+        DEBUGMODE = False
+        
         tk.Tk.__init__(self, *args, **kwargs)
         self.title("K45")
         self.protocol("WM_DELETE_WINDOW", self.OnQuit)
         self.minsize(1000, 700)
+        self.configure(bg='light gray')
         #------------------------------------------------------------------------------------------------------
+
+        s = ttk.Style()
+        s.theme_use('alt')
+        s.configure("blue.Horizontal.TProgressbar", background='blue')
+        s.configure("green.Vertical.TProgressbar", background='green')
+        s.configure("red.Horizontal.TProgressbar", background='red')
+        s.configure('gray.TLabelframe.Label', font=('courier', 15, 'bold'), foreground ='gray')
+        
         self.Focused = None
         def SelectFocus(event):
             self.Focused = event.widget
             
         def ReleaseFocus(event):
-            if  (hasattr(self.COMConnection, 'is_open')   and (self.COMConnection.isOpen())):
+            if  (hasattr(self.COMConnection, 'is_open') and (self.COMConnection.isOpen())):
                 self.Regulator.RemoteCommand(str(self.Focused).split(".")[-1], self.Focused.get() , self.COMConnection)
 
         def CommandSet():
-            if  (hasattr(self.COMConnection, 'is_open')   and (self.COMConnection.isOpen())):
+            if  (hasattr(self.COMConnection, 'is_open') and (self.COMConnection.isOpen())) or (DEBUGMODE):
                 ComStr = CommandEnter.get()
                 ComStr = re.sub("[^0-9]", "", ComStr)
                 self.Regulator.RemoteCommand("pure_command", ComStr , self.COMConnection)
+
+        def SensorTransmitionSet():
+            if  (hasattr(self.COMConnection, 'is_open') and (self.COMConnection.isOpen())) or (DEBUGMODE):
+                if (not self.SensDataSender.Transmitting):
+                    self.SensDataSender.IndexTMH = 0
+                    self.SensDataSender.Transmitting = True
+                    sensor_transmition_task.cancelled = False
+                    self.t2 = Thread(target=sensor_transmition_task, args = (0.01, self.SensorTransmitionHandle))
+                    self.t2.start()
+                    #self.t2.join()
+
 
         def ModeUpdate():
             if  (hasattr(self.COMConnection, 'is_open') and (self.COMConnection.isOpen())):
@@ -154,7 +189,7 @@ class K45_Comm(tk.Tk):
         
 
         # Mode Selection and system state --------------------------------------------------------------------------
-        ModeFrame = LabelFrame(self, relief=RAISED, borderwidth = 1, text = self.titeles.Mode_Selection, name = "settingmode")
+        ModeFrame = LabelFrame(self, relief=RAISED, borderwidth = 1, text = self.titeles.Mode_Selection, name = "settingmode", style = "Red.TLabelframe")
         ModeFrame.place(height=50, width=510, x=10, y=20)
         
         SetScanSelection_Rb1 = Radiobutton(ModeFrame, text = self.titeles.Set, variable = self.SetOrScanState, value = 0, name = "set_needed" , command = ModeUpdate)
@@ -167,7 +202,7 @@ class K45_Comm(tk.Tk):
         SetScanSelection_Rb2.update()
         
         # PID configurations --------------------------------------------------------------------------
-        PIDFrame = LabelFrame(self, relief=RAISED, borderwidth = 1, text = self.titeles.PID_Configs, name = "pid_configs")
+        PIDFrame = LabelFrame(self, relief=RAISED, borderwidth = 1, text = self.titeles.PID_Configs, name = "pid_configs", style = "Red.TLabelframe")
         PIDFrame.place(height=100, width=510, x=10, y=80)
         
         PropPartLabel = Label(PIDFrame, text = self.titeles.Kprop)
@@ -191,7 +226,7 @@ class K45_Comm(tk.Tk):
 
         
         # On Scan mode variables --------------------------------------------------------------------------
-        ScanFrame = LabelFrame(self, relief=RAISED, borderwidth = 1, text = self.titeles.Scan_configs, name = "scan_configs")
+        ScanFrame = LabelFrame(self, relief=RAISED, borderwidth = 1, text = self.titeles.Scan_configs, name = "scan_configs", style = "Red.TLabelframe")
         ScanFrame.place(height=100, width=510, x=10, y=190)
         
         TimeStepLabel = Label(ScanFrame, text = self.titeles.Scan_time_step)
@@ -213,7 +248,7 @@ class K45_Comm(tk.Tk):
         TemperatureStepEntry.bind('<Return>', ReleaseFocus)
         
         # Current state of Temperature --------------------------------------------------------------------------
-        TemperatureFrame = LabelFrame(self, relief=RAISED, borderwidth = 1, text = self.titeles.Temperatures, name="temperature")
+        TemperatureFrame = LabelFrame(self, relief=RAISED, borderwidth = 1, text = self.titeles.Temperatures, name="temperature", style = "Red.TLabelframe")
         TemperatureFrame.place(height=100, width=510, x=10, y=300)
         
         TempRealLabel = Label(TemperatureFrame, text = self.titeles.Measured)
@@ -233,7 +268,7 @@ class K45_Comm(tk.Tk):
         TempSetEntry.bind('<Return>', ReleaseFocus)
         
         # Status frame --------------------------------------------------------------------------
-        StatusFrame = LabelFrame(self, relief=RAISED, borderwidth = 1,  text = self.titeles.Status, name="status_frame")
+        StatusFrame = LabelFrame(self, relief=RAISED, borderwidth = 1,  text = self.titeles.Status, name="status_frame", style = "Red.TLabelframe")
         StatusFrame.place(height=100, width=510, x=10, y=410)
 
         # WorkStr = self.Regulator.GetTemperatureString(self.Treal.value, True)
@@ -269,11 +304,11 @@ class K45_Comm(tk.Tk):
         DiodeState.place(x=384,y=65,width=127)
         
         # Cryo liquides level --------------------------------------------------------------------------
-        CryoLevelFrame = LabelFrame(self, relief=RAISED, borderwidth = 1,  text = self.titeles.CryoLevel, name="cryo_level")
+        CryoLevelFrame = LabelFrame(self, relief=RAISED, borderwidth = 1,  text = self.titeles.CryoLevel, name="cryo_level", style = "Red.TLabelframe")
         CryoLevelFrame.place(height=490, width=150, x=530, y=20)
         
         # Progress bar widget
-        CryoLiquidesLevel = Progressbar(CryoLevelFrame, orient=VERTICAL, length=410,  mode='determinate', name="cryo_level_bar")
+        CryoLiquidesLevel = Progressbar(CryoLevelFrame, orient = VERTICAL, length=410,  mode='determinate', name="cryo_level_bar")
         CryoLiquidesLevel.place(x=60, y=30)
         FullTankShow   = tk.Label(CryoLevelFrame, text = "100 % ")
         FullTankShow.place(x=20,y=20)
@@ -284,26 +319,33 @@ class K45_Comm(tk.Tk):
         
         # Timer for communication start
         self.COMConnection = None
+        
         def background_task(Period, Handle):
             while not background_task.cancelled:
+                # Communication if only there is no any sensor transmition
                 Handle()
                 time.sleep(Period)
+
         background_task.cancelled = False
         self.t = Thread(target=background_task, args = (1, self.CommunicationHandle))
         self.t.start()
 
-        #def sensor_transmition_task(Period, Handle):
-        #    while not sensor_transmition_task.cancelled:
-        #        Handle()
-        #        time.sleep(Period)
-        #sensor_transmition_task.cancelled = False
-        #self.t2 = Thread(target=sensor_transmition_task, args = (1, self.SensorTransmitionHandle))
-        #self.t2.start()
-
+        def sensor_transmition_task(Period, Handle):
+            while not sensor_transmition_task.cancelled:
+                Handle()
+                ## Data-File transmiting
+                time.sleep(Period)
+                if (self.SensDataSender.Transmitting):
+                    #self.SensDataSender.Transmitting = False
+                    #sensor_transmition_task.cancelled = True
+                    sleep(0.01)
+                else:
+                    sensor_transmition_task.cancelled = True
+            
 
         
         # Sensor file to be sent to K45 Module. The widgets here remain unvisible until the according file is not selected
-        SensorFileFrame = LabelFrame(self, relief=RAISED, borderwidth = 1, text = self.titeles.SensorFile, name="sensor_file")
+        SensorFileFrame = LabelFrame(self, relief=RAISED, borderwidth = 1, text = self.titeles.SensorFile, name="sensor_file", style = "Red.TLabelframe")
         SensorFileFrame.place(height=100, width=510, x=10, y=520)
         # do it invisible now!
           
@@ -311,12 +353,13 @@ class K45_Comm(tk.Tk):
         SensorFilePath.insert(END, "")
         SensorFilePath.place(width=410,x=10,y=10)
 
-        SensorTransmittingProgress = Progressbar(SensorFileFrame, orient=HORIZONTAL, length=480,  mode='determinate', name="sensortx_bar")
+        SensorTransmittingProgress = Progressbar(SensorFileFrame, style="red.Horizontal.TProgressbar", orient=HORIZONTAL, 
+                                                 length=480,  mode='determinate', name="sensortx_bar")
         SensorTransmittingProgress.place(x=10, y=40)
 
 # ---------------------------------------------------------------------------------------------------------------------------------------
 
-        BtnSend = Button(SensorFileFrame, text=self.titeles.SendCommand, command=CommandSet)
+        BtnSend = Button(SensorFileFrame, text=self.titeles.SensorSendCommand, command=SensorTransmitionSet)
         BtnSend.pack(side="top")
         BtnSend.place(width=70,x=420, y=9)
 
@@ -377,8 +420,8 @@ class K45_Comm(tk.Tk):
         else:
             try:
                 LocalComConnection = serial.Serial(
-                        port=COMPort,
-                        baudrate=BoudRate,
+                        port=COMPort,                              # selected
+                        baudrate=BoudRate,                         # 9600 by default
                         parity=serial.PARITY_NONE,
                         stopbits=serial.STOPBITS_ONE,
                         bytesize=serial.EIGHTBITS)
@@ -459,14 +502,14 @@ class K45_Comm(tk.Tk):
             self.nametowidget(".scan_configs.d_t").delete(0, END)
             self.nametowidget(".scan_configs.d_t").insert(END, WorkStr)
         
-        #self.nametowidget(".cryo_level.cryo_level_bar")['value'] = self.L_Level
+        #self.nametowidget(".cryo_level.cryo_level_bar")["value"] = self.L_Level
         if (not self.CryoLiquidesLevelMeasureOn.get()):
-            self.nametowidget(".cryo_level.cryo_level_bar")['value'] = 0
+            self.nametowidget(".cryo_level.cryo_level_bar")["value"] = 0
             #self.nametowidget(".cryo_level").enable(False)
         else:
-            self.nametowidget(".cryo_level.cryo_level_bar")['value'] = (self.Regulator.L_Level)
+            self.nametowidget(".cryo_level.cryo_level_bar")["value"] = (self.Regulator.L_Level)
             # self.nametowidget(".cryo_level").enable(True)
-            
+                        
         #if not (hasattr(self.COMConnection, 'is_open') and (self.COMConnection.isOpen())):
         if (hasattr(self.COMConnection, 'is_open') and (self.COMConnection.isOpen())):
             self.nametowidget(".status_frame.connection_state").config(fg="green")
@@ -489,6 +532,7 @@ class K45_Comm(tk.Tk):
                 self.nametowidget(".cryo_level.cryo_level_bar")["value"] = self.CryoLevel
             else:
                 self.nametowidget(".cryo_level.cryo_level_bar")["value"] = 0
+        
         else:
             self.nametowidget(".status_frame.connection_state").config(fg="red")
             self.nametowidget(".status_frame.heater_state").config(fg="black")
