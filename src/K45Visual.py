@@ -25,19 +25,21 @@ from time import sleep
   https://question-it.com/questions/1025145/kak-sozdat-fonovyj-potok-pri-vyzove-intervalnoj-funktsii-v-python
   https://ru.stackoverflow.com/questions/848711/tkinter-%D0%B8-%D0%B7%D0%B0%D0%B2%D0%B5%D1%80%D1%88%D0%B5%D0%BD%D0%B8%D0%B5-%D0%BF%D1%80%D0%B8%D0%BB%D0%BE%D0%B6%D0%B5%D0%BD%D0%B8%D1%8F-%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D0%BE%D0%B9
  ''' 
-from threading import Thread
+import threading
 import time
 
 class K45_Comm(tk.Tk):
     
-    def CommunicationHandle(self):
+    def CommunicationHandle(self, CommunicationLocker):
         if (hasattr(self.COMConnection, 'is_open') and (self.COMConnection.isOpen())):
             if ((not hasattr(self, 'SensDataSender')) or (not self.SensDataSender.Transmitting) or (not self.SensDataSender.SensorReady)):
                 self.nametowidget(".sensor_file.sensortx_bar")["value"] = 0
+                CommunicationLocker.acquire()
                 if (self.Regulator.VarsUpdate(self.COMConnection)):
                     self.UpdateVariables()
                     # Visual elements update
                     self.UpdateVisuals()
+                CommunicationLocker.release()
             else:
                 #round((100 * self.SensDataSender.IndexTMH / self.SensDataSender.TMHLength),0)
                 if (self.SensDataSender.TMHLength != 0):
@@ -53,7 +55,7 @@ class K45_Comm(tk.Tk):
             if (self.SensDataSender.SensorReady and self.SensDataSender.Transmitting):
                 if (self.SensDataSender.DataSensorLineSend( self.COMConnection)):
                     # Nothing to do - wait for transmittion end
-                    sleep(0.1)
+                    sleep(0.01)
                 else:
                     #Stop transmiting
                     self.SensDataSender.Transmitting = False
@@ -105,28 +107,28 @@ class K45_Comm(tk.Tk):
             self.Focused = event.widget
             
         def ReleaseFocus(event):
-            if  (hasattr(self.COMConnection, 'is_open') and (self.COMConnection.isOpen())):
+            if  (hasattr(self.COMConnection, 'is_open') and (self.COMConnection.isOpen()) and ((not hasattr(self, 'SensDataSender')) or (not self.SensDataSender.Transmitting))):
                 self.Regulator.RemoteCommand(str(self.Focused).split(".")[-1], self.Focused.get() , self.COMConnection)
 
         def CommandSet():
-            if  (hasattr(self.COMConnection, 'is_open') and (self.COMConnection.isOpen())) or (DEBUGMODE):
+            if  (hasattr(self.COMConnection, 'is_open') and (self.COMConnection.isOpen()) and ((not hasattr(self, 'SensDataSender')) or (not self.SensDataSender.Transmitting))) or (DEBUGMODE):
                 ComStr = CommandEnter.get()
                 ComStr = re.sub("[^0-9]", "", ComStr)
                 self.Regulator.RemoteCommand("pure_command", ComStr , self.COMConnection)
 
         def SensorTransmitionSet():
-            if  (hasattr(self.COMConnection, 'is_open') and (self.COMConnection.isOpen())) or (DEBUGMODE):
+            if  (hasattr(self.COMConnection, 'is_open') and (self.COMConnection.isOpen()) and (not self.SensDataSender.Transmitting)) or (DEBUGMODE):
                 if (not self.SensDataSender.Transmitting):
                     self.SensDataSender.IndexTMH = 0
                     self.SensDataSender.Transmitting = True
                     sensor_transmition_task.cancelled = False
-                    self.t2 = Thread(target=sensor_transmition_task, args = (0.01, self.SensorTransmitionHandle))
+                    self.t2 = threading.Thread(target=sensor_transmition_task, args = (0.01, self.SensorTransmitionHandle))
                     self.t2.start()
                     #self.t2.join()
 
 
         def ModeUpdate():
-            if  (hasattr(self.COMConnection, 'is_open') and (self.COMConnection.isOpen())):
+            if  (hasattr(self.COMConnection, 'is_open') and (self.COMConnection.isOpen()) and ((not hasattr(self, 'SensDataSender')) or (not self.SensDataSender.Transmitting))):
                 if self.SetOrScanState.value > 0:
                     Value = 0
                 else:
@@ -230,20 +232,20 @@ class K45_Comm(tk.Tk):
         ScanFrame.place(height=100, width=510, x=10, y=190)
         
         TimeStepLabel = Label(ScanFrame, text = self.titeles.Scan_time_step)
-        TimeStepLabel.place(x=20,y=20)
+        TimeStepLabel.place(x=170,y=20)
         WorkStr = self.Regulator.GetTimeString( self.D_t.value)
         TimeStepEntry = Entry(ScanFrame, name = "d_t")
         TimeStepEntry.insert(END, WorkStr)
-        TimeStepEntry.place(x=20,y=40)
+        TimeStepEntry.place(x=170,y=40)
         TimeStepEntry.bind('<Button-1>', SelectFocus)
         TimeStepEntry.bind('<Return>', ReleaseFocus)
         
         TemperatureStepLabel = Label(ScanFrame, text = self.titeles.Scan_temperature_step)
-        TemperatureStepLabel.place(x=170,y=20)
+        TemperatureStepLabel.place(x=20,y=20)
         WorkStr = self.Regulator.GetTemperatureString(self.D_T.value, False)
         TemperatureStepEntry = Entry(ScanFrame, name = "d_T")
         TemperatureStepEntry.insert(END, WorkStr)
-        TemperatureStepEntry.place(x=170,y=40) 
+        TemperatureStepEntry.place(x=20,y=40) 
         TemperatureStepEntry.bind('<Button-1>', SelectFocus)
         TemperatureStepEntry.bind('<Return>', ReleaseFocus)
         
@@ -319,15 +321,16 @@ class K45_Comm(tk.Tk):
         
         # Timer for communication start
         self.COMConnection = None
+        CommunicationLocker = threading.Lock()
         
-        def background_task(Period, Handle):
+        def background_task(Period, Handle, CommunicationLocker):
             while not background_task.cancelled:
                 # Communication if only there is no any sensor transmition
-                Handle()
+                Handle(CommunicationLocker)
                 time.sleep(Period)
 
         background_task.cancelled = False
-        self.t = Thread(target=background_task, args = (1, self.CommunicationHandle))
+        self.t = threading.Thread(target=background_task, args = (1, self.CommunicationHandle, CommunicationLocker))
         self.t.start()
 
         def sensor_transmition_task(Period, Handle):

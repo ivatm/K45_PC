@@ -134,7 +134,7 @@ class K45_Unit(object):
             
             #print("beg = " + beg)
             # print("inBuff[22:24] = " + inBuff[22:25].decode("utf-8"))
-            print("Wrong data")
+            #print("Wrong data")
             return False
 
         elif (len(inBuff) == self.ReadBufferLength) and (inBuff[self.CommandPlace] == self.keSimpleTelegram) and CheckSumCheck(inBuff):
@@ -241,7 +241,8 @@ class K45_Unit(object):
                     out += COMConnection.read(1)
                    
                 if out != '':
-                    print(out)
+                    #print("Simple reception:") 
+                    #print(out)
                     self.receivedProcessing( out)
                 UnitEvailable = True
                 return UnitEvailable
@@ -254,16 +255,44 @@ class K45_Unit(object):
         if (not COMConnection.isOpen()):
             return FALSE
         else:
-            data = [ord('b'),ord('e'),ord('g'),Command,0,0,0]
-            WorkByte = Value & 0xFF
-            data[4] = WorkByte
-            WorkByte = (Value >> 8) & 0xFF
-            data[5] = WorkByte
-            CheckSumValue = GetCheckSum(data)
-            data =  [*data, CheckSumValue, ord('e'),ord('n'),ord('d')]
-            print(data)
-            COMConnection.write(data)
+            try:
+                data = [ord('b'),ord('e'),ord('g'),Command,0,0,0]
+                WorkByte = Value & 0xFF
+                data[4] = WorkByte
+                WorkByte = (Value >> 8) & 0xFF
+                data[5] = WorkByte
+                CheckSumValue = GetCheckSum(data)
+                data =  [*data, CheckSumValue, ord('e'),ord('n'),ord('d')]
+                #print("Simple sending ") 
+                #print(data)
+                COMConnection.write(data)
             
+                out = []
+                # let's wait one until the buffer fulfiling
+                LimitCounter = 0
+                while (COMConnection.inWaiting() < self.ReadBufferLength) and (LimitCounter < 100):
+                    time.sleep(0.1)
+                    LimitCounter = LimitCounter + 1 
+                
+                if (LimitCounter >= 99):
+                    UnitEvailable = False
+                    return False
+                
+                # All string recept   
+                while COMConnection.inWaiting() > 0:
+                    out += COMConnection.read(1)
+                   
+                if out != '':
+                    #("Simple reception:") 
+                    #print(out)
+                    self.receivedProcessing( out)
+                UnitEvailable = True
+                return UnitEvailable
+            except Exception as e:                
+                #print("Can't set COM Port:{}\n".format(str(e)))
+                UnitEvailable = False
+                return UnitEvailable
+
     '''
     def CheckSumCheck(self, Array):
         Sum = 0

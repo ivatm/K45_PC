@@ -42,13 +42,15 @@ class SensorTransmitter(object):
                     strCommand = ['b', 'e', 'g', self.keSendSensor, IndexByte1, IndexByte2, *self.AllTMH[self.IndexTMH]]
                     CheckSum = GetCheckSum(strCommand)
                     strCommand = [*strCommand,CheckSum, 'e', 'n', 'd']
-                    print(strCommand)
+                    #print("Sensor:String to send:") 
+                    #print(strCommand)
                     strCommandOut = []
                     for SymByte in strCommand:
                         if (type(SymByte) != int):
                             SymByte = ord(SymByte)
                         strCommandOut = [*strCommandOut, SymByte]
-                    print(strCommandOut)
+                    #print("Sensor:ASCII telegram sent :" ) 
+                    #print(strCommandOut)
                             
                     COMConnection.write(strCommandOut)
                     self.IndexTMH = self.IndexTMH + 1
@@ -59,7 +61,8 @@ class SensorTransmitter(object):
                     CheckSum = GetCheckSum(strCommand)
                     strCommand = [*strCommand,CheckSum, ord('e'), ord('n'), ord('d')]
                     COMConnection.write(strCommand)
-                    print(strCommand)
+                    #print("Sensor complete:")
+                    #print(strCommand)
 
                     self.TransmittingComplete = True
                     self.Transmitting = False
@@ -70,10 +73,10 @@ class SensorTransmitter(object):
                     self.ProgressDone = 0
 
                 out = []
-                # let's wait one until the buffer fulfiling
+                # let's wait one until the buffer fulfilling
                 LimitCounter = 0
                 while (COMConnection.inWaiting() < self.SensorReceptionAnswerLength) and (LimitCounter < 99):
-                    time.sleep(0.1)
+                    time.sleep(0.01)
                     LimitCounter = LimitCounter + 1 
                 
                 if (LimitCounter >= 100):
