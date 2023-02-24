@@ -79,7 +79,18 @@ class K45_Comm(tk.Tk):
             
     
     def OnQuit(self):
-        self. t._target.cancelled = True
+        try:
+            self.t._target.cancelled = True
+        except:
+            time.sleep(0.1)
+
+
+        try:
+            self.t2._target.cancelled = True
+        except:
+            time.sleep(0.1)
+
+        time.sleep(0.1)
         # IMPORTANT!
         self.wm_attributes("-disabled", False) # IMPORTANT!
         self.destroy()
@@ -173,6 +184,8 @@ class K45_Comm(tk.Tk):
         self.CoolerError = False
         self.ControlDiodeError = False
         self.CryoLevel = 100
+        self.CryoLevelAvailable = BooleanVar(name = 'CryoLevelAvailable')
+        self.CryoLevelAvailable = False
         
         self.userCommand = "*"
         
@@ -306,18 +319,20 @@ class K45_Comm(tk.Tk):
         DiodeState.place(x=384,y=65,width=127)
         
         # Cryo liquides level --------------------------------------------------------------------------
-        CryoLevelFrame = LabelFrame(self, relief=RAISED, borderwidth = 1,  text = self.titeles.CryoLevel, name="cryo_level", style = "Red.TLabelframe")
-        CryoLevelFrame.place(height=490, width=150, x=530, y=20)
-        
-        # Progress bar widget
-        CryoLiquidesLevel = Progressbar(CryoLevelFrame, orient = VERTICAL, length=410,  mode='determinate', name="cryo_level_bar")
-        CryoLiquidesLevel.place(x=60, y=30)
-        FullTankShow   = tk.Label(CryoLevelFrame, text = "100 % ")
-        FullTankShow.place(x=20,y=20)
-        MiddleTankShow = tk.Label(CryoLevelFrame, text = " 50 % ")
-        MiddleTankShow.place(x=20,y=220)
-        EmptyTankShow  = tk.Label(CryoLevelFrame, text = "  0 % ")
-        EmptyTankShow.place(x=20,y=430)
+        if self.CryoLevelAvailable:
+            CryoLevelFrame = LabelFrame(self, relief=RAISED, borderwidth = 1,  text = self.titeles.CryoLevel, name="cryo_level", style = "Red.TLabelframe")
+            CryoLevelFrame.place(height=490, width=150, x=530, y=20)
+            #CryoLevelFrame.pack_forget()
+            
+            # Progress bar widget
+            CryoLiquidesLevel = Progressbar(CryoLevelFrame, orient = VERTICAL, length=410,  mode='determinate', name="cryo_level_bar")
+            CryoLiquidesLevel.place(x=60, y=30)
+            FullTankShow   = tk.Label(CryoLevelFrame, text = "100 % ")
+            FullTankShow.place(x=20,y=20)
+            MiddleTankShow = tk.Label(CryoLevelFrame, text = " 50 % ")
+            MiddleTankShow.place(x=20,y=220)
+            EmptyTankShow  = tk.Label(CryoLevelFrame, text = "  0 % ")
+            EmptyTankShow.place(x=20,y=430)
         
         # Timer for communication start
         self.COMConnection = None
@@ -403,7 +418,7 @@ class K45_Comm(tk.Tk):
         InputCOMPort.pack(anchor = NW)
         InputCOMPort.place(x=20,y=40)
         
-        BoudRateOptions = [2400, 4800, 9600, 14400, 19200]
+        BoudRateOptions = [9600]
         BoudRate = IntVar()
         BoudRate.set( 9600)
         InputBoudRateLabel = Label(self.toplevel_dialog, text = self.titeles.Bauderate_Selection)
@@ -505,13 +520,15 @@ class K45_Comm(tk.Tk):
             self.nametowidget(".scan_configs.d_t").delete(0, END)
             self.nametowidget(".scan_configs.d_t").insert(END, WorkStr)
         
-        #self.nametowidget(".cryo_level.cryo_level_bar")["value"] = self.L_Level
-        if (not self.CryoLiquidesLevelMeasureOn.get()):
-            self.nametowidget(".cryo_level.cryo_level_bar")["value"] = 0
-            #self.nametowidget(".cryo_level").enable(False)
-        else:
-            self.nametowidget(".cryo_level.cryo_level_bar")["value"] = (self.Regulator.L_Level)
-            # self.nametowidget(".cryo_level").enable(True)
+        if self.CryoLevelAvailable:
+            #self.nametowidget(".cryo_level.cryo_level_bar")["value"] = self.L_Level
+            if (not self.CryoLiquidesLevelMeasureOn.get()):
+                self.nametowidget(".cryo_level.cryo_level_bar")["value"] = 0
+                #self.nametowidget(".cryo_level").enable(False)
+            else:
+                self.nametowidget(".cryo_level.cryo_level_bar")["value"] = (self.Regulator.L_Level)
+                # self.nametowidget(".cryo_level").enable(True)
+
                         
         #if not (hasattr(self.COMConnection, 'is_open') and (self.COMConnection.isOpen())):
         if (hasattr(self.COMConnection, 'is_open') and (self.COMConnection.isOpen())):
@@ -530,11 +547,12 @@ class K45_Comm(tk.Tk):
                 self.nametowidget(".status_frame.contr_diod_state").config(fg="red")
             else:
                 self.nametowidget(".status_frame.contr_diod_state").config(fg="black")
-             
-            if (self.CryoLiquidesLevelMeasureOn):
-                self.nametowidget(".cryo_level.cryo_level_bar")["value"] = self.CryoLevel
-            else:
-                self.nametowidget(".cryo_level.cryo_level_bar")["value"] = 0
+        
+            if self.CryoLevelAvailable:
+                if (self.CryoLiquidesLevelMeasureOn):
+                    self.nametowidget(".cryo_level.cryo_level_bar")["value"] = self.CryoLevel
+                else:
+                    self.nametowidget(".cryo_level.cryo_level_bar")["value"] = 0
         
         else:
             self.nametowidget(".status_frame.connection_state").config(fg="red")
