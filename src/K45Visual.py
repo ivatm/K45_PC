@@ -11,14 +11,17 @@ from tkinter import *
 from tkinter.ttk import *
 from K45Unit import K45_Unit
 from SensorTx import SensorTransmitter
+from Metrology import Metrology
 from TitleConfigs import Titles
 from tkinter import filedialog
+from tkinter import simpledialog
 
 import serial
 from serial.tools.list_ports_windows import iterate_comports
 from _ast import List
 import logging
 from time import sleep
+from cProfile import label
 
 '''
   Good examples for Timers
@@ -39,6 +42,8 @@ class K45_Comm(tk.Tk):
                     self.UpdateVariables()
                     # Visual elements update
                     self.UpdateVisuals()
+                else:
+                    self.nametowidget(".status_frame.connection_state").config(fg="black")
                 CommunicationLocker.release()
             else:
                 #round((100 * self.SensDataSender.IndexTMH / self.SensDataSender.TMHLength),0)
@@ -104,6 +109,7 @@ class K45_Comm(tk.Tk):
         self.protocol("WM_DELETE_WINDOW", self.OnQuit)
         self.minsize(1000, 700)
         self.configure(bg='light gray')
+        # self.iconbitmap(default='temperature.ico')
         #------------------------------------------------------------------------------------------------------
 
         s = ttk.Style()
@@ -198,7 +204,10 @@ class K45_Comm(tk.Tk):
         # --------------------------------------------------------------------------
         K45MenuButton = Menu(self)
         K45MenuButton.add_command(label=self.titeles.Menu_Connection, command = self.Create_InitCommunication)
-        K45MenuButton.add_command(label=self.titeles.Menu_Sensor, command = self.SensorInit)
+        ConfigMenuButton = Menu(K45MenuButton, tearoff = 0)
+        ConfigMenuButton.add_command(label=self.titeles.Menu_Sensor, command = self.SensorInit)
+        ConfigMenuButton.add_command(label=self.titeles.Menu_Calibrate, command = self.start_calibration)
+        K45MenuButton.add_cascade(menu=ConfigMenuButton, label = self.titeles.Menu_Config)
         K45MenuButton.add_command(label=self.titeles.Menu_Exit, command=self.OnQuit)
         self.config(menu=K45MenuButton)
         
@@ -369,17 +378,24 @@ class K45_Comm(tk.Tk):
           
         SensorFilePath = Entry(SensorFileFrame, name = "file_path")
         SensorFilePath.insert(END, "")
-        SensorFilePath.place(width=410,x=10,y=10)
+        SensorFilePath.place(width=300,x=10,y=10)
 
         SensorTransmittingProgress = Progressbar(SensorFileFrame, style="red.Horizontal.TProgressbar", orient=HORIZONTAL, 
-                                                 length=480,  mode='determinate', name="sensortx_bar")
+                                                 length=300,  mode='determinate', name="sensortx_bar")
         SensorTransmittingProgress.place(x=10, y=40)
 
 # ---------------------------------------------------------------------------------------------------------------------------------------
-
         BtnSend = Button(SensorFileFrame, text=self.titeles.SensorSendCommand, command=SensorTransmitionSet)
         BtnSend.pack(side="top")
         BtnSend.place(width=70,x=420, y=9)
+
+        SensorType = tk.Label(SensorFileFrame, anchor="c", text = self.titeles.SensorTypeSelect, bg="light gray" , fg = "black" , height=1, width=20,name = "sensor_type_label" )
+        SensorType.place(x=310,y=10,width=100)
+        
+        SensorTypes = ["TD 10mkA", "TD 100mkA", "TR 25mkA", "TR 250mkA"]
+        SensorTypeSelection = ttk.Combobox(SensorFileFrame, text = StringVar(value=SensorTypes[0]), values = SensorTypes)
+        SensorTypeSelection.current(0)
+        SensorTypeSelection.place(x=320,y=35,width=90)
 
 
     def Create_InitCommunication(self):
@@ -460,6 +476,18 @@ class K45_Comm(tk.Tk):
         # Possibly not needed, used to focus parent window again
         self.deiconify() 
 
+    def start_calibration(self):
+        self.withdraw()  # 
+        password = simpledialog.askstring(self.titeles.Check_access, self.titeles.Enter_Password, show='*')
+        
+        if password == Metrology.Password:
+            self.Calibr = Metrology(K45_Comm)
+        else:
+            self.deiconify()#("Password entry cancelled.")
+        
+        #
+
+
     def UpdateVariables(self):
         self.Treal.value = self.Regulator.Treal
         self.Tset.value = self.Regulator.Tset
@@ -475,6 +503,11 @@ class K45_Comm(tk.Tk):
         self.CelseOrKelvin.value = self.Regulator.CelseOrKelvin
         self.CryoLiquidesLevelMeasureOn.value = self.Regulator.CryoLiquidesLevelMeasureOn
         # -------------------------------------------------------------
+        self.HeaterError = self.Regulator.HeaterError
+        self.CoolerError = self.Regulator.CoolerError
+        self.ControlDiodeError = self.Regulator.ControlDiodeError
+
+
 
     def UpdateVisuals(self):
         

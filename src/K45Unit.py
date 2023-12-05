@@ -43,8 +43,9 @@ class K45_Unit(object):
     CryoLiquidesLevelMeasureOn = False
     
     # Max length of received telegram
-    ReadBufferLength = 28  # Telegram length in case common data transmition: 3-Start + 1-Commant + 20-Data + 1-CheckSum +3-End
-    SensorReceptionAnswerLength = 9  # Telegram length in case common data transmition: 3-Start + 1-Commant + 1-Ok/NoK + 1-CheckSum + 3-End
+    ReadBufferLength = 28            # Telegram length in case common data transmition: 3-Start + 1-Command + 20-Data + 1-CheckSum +3-End
+    SensorReceptionAnswerLength = 8  # Telegram length in case sensor data transmition: 3-Start + 1-Command + 1-Ok/NoK + 1-CheckSum + 3-End
+    MetrologyAnswerLength = 24       # Telegram length in case sensor data transmition: 3-Start + 1-Command + 14-Data + 1-CheckSum + 3-End
     
     #Telegram code (K45 aswer command number) place
     CommandPlace = 3
@@ -66,18 +67,27 @@ class K45_Unit(object):
     # All K45 to PC answers
     keSimpleTelegram     = 0
     keSensorLineReceived = 1
+    keCalibrationMode    = 2
     # ------------------------------------------------------------------------------------
-    TrealPlace = 4
-    TsetPlace = 6
-    Tcur_setPlace = 8
-    D_TPlace = 10
-    D_tPlace = 12
-    KpropPlace = 14
-    KdiffPlace = 16
-    UrealPlace = 18
+    TrealPlace     = 4
+    TsetPlace      = 6
+    Tcur_setPlace  = 8
+    D_TPlace       = 10
+    D_tPlace       = 12
+    KpropPlace     = 14
+    KdiffPlace     = 16
+    UrealPlace     = 18
     CryoLevelPlace = 21
-    ModesPlace = 22
-    StatusPlace = 23
+    ModesPlace     = 22
+    StatusPlace    = 23
+    # ------------------------------------------------------------------------------------
+    NullValue      = 4
+    K_1_Corr       = 6
+    K_32_Corr      = 8
+    I_10mkA_Code   = 10
+    I_25mkA_Code   = 12
+    I_100mkA_Code  = 14
+    I_250mkA_Code  = 16
 
     # ------------------------------------------------------------------------------------
     
@@ -92,8 +102,16 @@ class K45_Unit(object):
     keSaveConfigs            = 12
     keADCCalibration         = 13
     keShowSensor             = 14
+
     keSendSensor             = 100
     keSensorComplete         = 101
+    
+    keStartCalibrationMode    = 150 # This command starts or cancels calibration mode - Subcommand always 0
+    keKeepCalibrationMode     = 151 # This command continues calibration mode and sends some variables value - Subcommand the number of variable
+    keCalibrationModeComplete = 152 # Stops calibration mode - Subcommand always 0
+    keSetCurrentSelection     = 153 # Set selected current - Subcommand  0, 1, 2, 3
+    keSetADCCoefSelection     = 154 # Stops calibration mode - Subcommand always 0
+
     keNop                    = 253  # Nothing to do
     keRestoreDefaults        = 254
     keExit                   = 255
@@ -196,8 +214,14 @@ class K45_Unit(object):
             #print("Status =" + "{0:b}".format(self.Status))
             return True
 
-        elif (len(inBuff) != self.SensorReceptionAnswerLength) and (inBuff[self.CommandPlace] == self.keSensorLineReceived) and CheckSumCheck(inBuff):
+        elif (len(inBuff) == self.SensorReceptionAnswerLength) and (inBuff[self.CommandPlace] == self.keSensorLineReceived) and CheckSumCheck(inBuff):
             if inBuff[self.SubCommandPlace] == True:
+                #answer is Ok
+                return True
+            else:
+                return False
+        elif (inBuff[self.CommandPlace] == self.keCalibrationMode) and CheckSumCheck(inBuff):
+            if self.MetrologyReception(inBuff) == True:
                 #answer is Ok
                 return True
             else:
@@ -213,6 +237,8 @@ class K45_Unit(object):
             # print("inBuff[22:24] = " + inBuff[22:25].decode("utf-8"))
             #print("Wrong data")
             return False
+
+
 
 # -----------------------------------------------------------------------------------
     def VarsUpdate(self, COMConnection):
@@ -292,26 +318,7 @@ class K45_Unit(object):
                 #print("Can't set COM Port:{}\n".format(str(e)))
                 UnitEvailable = False
                 return UnitEvailable
-
-    '''
-    def CheckSumCheck(self, Array):
-        Sum = 0
-        for Index in range(len(Array) - 4):
-            Sum = Sum + Array[Index]
-        Sum = Sum & 0xFF
-        if (Sum == Array[len(Array) - 4]):
-            return True
-        else:
-            return False
      
-    def GetCheckSum(self, Array):
-        Sum = 0
-        for Index in range(len(Array)-1):
-            Sum = Sum + Array[Index]
-        Sum = Sum & 0xFF
-        return(Sum)
-    '''            
-    
     def RemoteCommand(self, Variable, StrValue, COMConnection):
         StrValue = re.sub("[^0-9,.]", "", StrValue)
 
@@ -386,4 +393,46 @@ class K45_Unit(object):
         WorkString = WorkString + " S"
         
         return WorkString
+
+
+    def MetrologyReception(self, inBuff):
+        '''
+        beg                - 3 bytes
+        keCalibrationMode  - 1 byte - telegram Name
+        NullValue          - 2 bytes
+        K_1_Corr           - 2 bytes
+        K_32_Corr          - 2 bytes
+        I_10mkA_Code       - 2 bytes
+        I_25mkA_Code       - 2 bytes
+        I_100mkA_Code      - 2 bytes
+        I_250mkA_Code      - 2 bytes
+        CheckSum           - 1 byte
+        end                - 3 bytes
+        #-----------------------------------------------
+        Total 25 Bytes
+        '''
+        
+        if (len(inBuff) == self.MetrologyAnswerLength) and (inBuff[self.CommandPlace] == self.keCalibrationMode) and CheckSumCheck(inBuff):
+            self.NullValue          - (inBuff[self.NullValue     + 1]  << 8) + inBuff[self.NullValue    ]
+            self.K_1_Corr           - (inBuff[self.K_1_Corr      + 1]  << 8) + inBuff[self.K_1_Corr     ]
+            self.K_32_Corr          - (inBuff[self.K_32_Corr     + 1]  << 8) + inBuff[self.K_32_Corr    ]
+            self.I_10mkA_Code       - (inBuff[self.I_10mkA_Code  + 1]  << 8) + inBuff[self.I_10mkA_Code ]
+            self.I_25mkA_Code       - (inBuff[self.I_25mkA_Code  + 1]  << 8) + inBuff[self.I_25mkA_Code ]
+            self.I_100mkA_Code      - (inBuff[self.I_100mkA_Code + 1]  << 8) + inBuff[self.I_100mkA_Code]
+            self.I_250mkA_Code      - (inBuff[self.I_250mkA_Code + 1]  << 8) + inBuff[self.I_250mkA_Code]
+
+            return True
+        else:
+            return False
+
+    def RemoteCalibrationStartCancel(self, COMConnection):
+        self.SendCommand(self.keStartCalibrationMode, 0, COMConnection)
+        
+    def RemoteCalibrationCommand(self, Variable, StrValue, COMConnection):
+        self.SendCommand(self.keKeepCalibrationMode, Variable, int(StrValue), COMConnection)
+
+    def RemoteCalibrationCompletition(self, COMConnection):
+        self.SendCommand(self.keCalibrationModeComplete, 0, COMConnection)
+        
+        
         
